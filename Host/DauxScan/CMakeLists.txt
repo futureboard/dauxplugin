@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(dauxscan LANGUAGES CXX)
 
-set(DAUXHOST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../dauxhost/src)
+set(DAUXHOST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../DauxHost/src)
 
 add_executable(DAUxScan
     src/main.cpp

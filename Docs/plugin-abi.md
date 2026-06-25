@@ -6,7 +6,7 @@ small, POD/handle/function-pointer based, and free of any STL / Rust / .NET
 types so that plugins and hosts written in different languages and compiled with
 different toolchains interoperate.
 
-Headers live in [`daux/core/include`](../core/include):
+Headers live in [`daux/Core/include`](../Core/include):
 
 | Header | Purpose |
 |---|---|

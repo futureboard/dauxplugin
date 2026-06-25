@@ -1,6 +1,6 @@
 # DAUx Plugin SDK — C# / .NET
 
-[`Daux.Plugin`](../wrappers/dotnet/Daux.Plugin) is the managed SDK. You
+[`Daux.Plugin`](../Wrappers/DotNet/Daux.Plugin) is the managed SDK. You
 implement `IDauxPlugin` (or derive from `DauxPluginBase`) and add one tiny
 native entry point; the SDK marshals everything across the C ABI.
 
@@ -126,6 +126,6 @@ the editor and prints its preferred size.
 ## Remaining TODO
 
 - Full HWND child-window embedding (style flags, sizing, focus); see
-  `examples/gain-dotnet-avalonia/Editor/README.md`.
+  `Examples/GainDotnetAvalonia/Editor/README.md`.
 - Out-of-process window hosting + message loop in `DAUxHost --mode=editor`.
 - Normalized↔plain curves and parameter formatting.

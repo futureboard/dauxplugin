@@ -16,9 +16,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DAUX_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ROOT_DIR="$(cd "$DAUX_DIR/.." && pwd)"
-BUILD_DIR="$ROOT_DIR/build"
-PLUGINS_DIR="$BUILD_DIR/plugins"
+ROOT_DIR="$(cd "$DAUX_DIR" && pwd)"
+BUILD_DIR="$ROOT_DIR/build.$(uname)"
+PLUGINS_DIR="$BUILD_DIR"
 CONFIG="Release"
 WHAT="${1:-all}"
 
@@ -47,19 +47,19 @@ build_core() {
 
 build_rust() {
     echo "=== [2/3] Rust wrapper + example (cargo) ==="
-    ( cd "$DAUX_DIR/examples/gain-rust-gpui" && cargo build --release )
+    ( cd "$DAUX_DIR/Examples/GainRustGpui" && cargo build --release )
     # cdylib output is lib<name>.<ext> on Linux/macOS.
-    local out="$DAUX_DIR/examples/gain-rust-gpui/target/release/libgain_rust_gpui${EXT}"
+    local out="$DAUX_DIR/Examples/GainRustGpui/target/release/libgain_rust_gpui${EXT}"
     cp -f "$out" "$PLUGINS_DIR/daux_gain_rust.dauxplug"
     echo "    -> $PLUGINS_DIR/daux_gain_rust.dauxplug"
 }
 
 build_dotnet() {
     echo "=== [3/3] .NET wrapper + Avalonia example (NativeAOT bundle) ==="
-    local proj="$DAUX_DIR/examples/gain-dotnet-avalonia/Plugin/gain-dotnet-avalonia.csproj"
+    local proj="$DAUX_DIR/Examples/GainDotnetAvalonia/Plugin/gain-dotnet-avalonia.csproj"
     dotnet publish "$proj" -r "$RID" -c "$CONFIG"
 
-    local pub="$DAUX_DIR/examples/gain-dotnet-avalonia/Plugin/bin/$CONFIG/net8.0/$RID/publish"
+    local pub="$DAUX_DIR/Examples/GainDotnetAvalonia/Plugin/bin/$CONFIG/net8.0/$RID/publish"
     local bundle="$PLUGINS_DIR/daux_gain_dotnet.dauxplug"
 
     rm -rf "$bundle"
@@ -84,7 +84,7 @@ build_dotnet() {
     done
     shopt -u nullglob
 
-    cp -f "$DAUX_DIR/examples/gain-dotnet-avalonia/manifest.xml" "$bundle/manifest.xml"
+    cp -f "$DAUX_DIR/Examples/GainDotnetAvalonia/manifest.xml" "$bundle/manifest.xml"
     echo "    -> $bundle (bundle)"
 }
 

@@ -40,7 +40,7 @@ DAUxHost.exe --mode=editor --plugin=...\daux_gain_dotnet.dauxplug
   client rect, and focus handling are not done yet.
 - **Out-of-process hosting**: `DAUxHost --mode=editor` currently creates +
   probes the editor; it does not yet host a top-level window and pump a message
-  loop / reparent across processes. See `daux/docs/dauxhost-protocol.md`.
+  loop / reparent across processes. See `daux/Docs/dauxhost-protocol.md`.
 - **Native render deps when shown out-of-process**: showing the editor (vs.
   probing) loads SkiaSharp/HarfBuzz native libs, which must sit next to the
   plugin. The preview app bundles them automatically.

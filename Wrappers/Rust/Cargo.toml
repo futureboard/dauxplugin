@@ -9,6 +9,6 @@ members = [
     "daux-plugin-sys",
     "daux-plugin",
 ]
-# The example plugin (daux/examples/gain-rust-gpui) lives outside this directory
+# The example plugin (daux/Examples/GainRustGpui) lives outside this directory
 # so it cannot be a workspace member; it is a standalone crate that depends on
 # daux-plugin by path. Build it from its own directory with `cargo build`.

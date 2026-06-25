@@ -1,5 +1,5 @@
 // Interop.cs - blittable native struct definitions and constants mirroring the
-// DAUx Plugin C ABI (see daux/core/include/daux_*.h).
+// DAUx Plugin C ABI (see daux/Core/include/daux_*.h).
 //
 // Every struct is StructLayout(Sequential) and field-for-field identical to the
 // C headers. Function-pointer fields are stored as IntPtr and filled with

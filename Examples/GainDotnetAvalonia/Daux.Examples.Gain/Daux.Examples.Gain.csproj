@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\wrappers\dotnet\Daux.Plugin\Daux.Plugin.csproj" />
+    <ProjectReference Include="..\..\..\Wrappers\DotNet\Daux.Plugin\Daux.Plugin.csproj" />
   </ItemGroup>
 
 </Project>

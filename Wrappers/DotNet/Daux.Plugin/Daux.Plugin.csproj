@@ -15,7 +15,7 @@
     POD structs) - no managed types cross it. This library compiles as a normal
     class library (so `dotnet build` works for development/IntelliSense); the
     EXAMPLE plugin publishes itself as a NativeAOT shared library and renames
-    the artifact to *.dauxplug. See daux/docs/plugin-sdk-dotnet.md.
+    the artifact to *.dauxplug. See daux/Docs/plugin-sdk-dotnet.md.
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>

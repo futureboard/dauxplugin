@@ -2,7 +2,7 @@
 //!
 //! These are hand-written (not bindgen-generated) so the crate has no build
 //! dependencies and the layout is auditable against the C headers in
-//! `daux/core/include`. Every `struct` is `#[repr(C)]` and every field order
+//! `daux/Core/include`. Every `struct` is `#[repr(C)]` and every field order
 //! mirrors the corresponding header exactly. If you change a header, change
 //! this file in lockstep and keep `DAUX_ABI_VERSION` in sync.
 //!

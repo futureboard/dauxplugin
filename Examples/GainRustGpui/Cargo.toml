@@ -8,9 +8,9 @@ license = "MIT OR Apache-2.0"
 [lib]
 # cdylib so the OS produces a loadable dynamic library. On Windows this is
 # `gain_rust_gpui.dll`; rename/copy it to `*.dauxplug` for the DAUx loader
-# (see daux/docs/plugin-sdk-rust.md). DAUxHost --mode=headless can also load
+# (see daux/Docs/plugin-sdk-rust.md). DAUxHost --mode=headless can also load
 # the .dll directly by path.
 crate-type = ["cdylib"]
 
 [dependencies]
-daux-plugin = { path = "../../wrappers/rust/daux-plugin" }
+daux-plugin = { path = "../../Wrappers/Rust/daux-plugin" }
