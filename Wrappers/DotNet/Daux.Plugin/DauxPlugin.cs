@@ -118,7 +118,8 @@ public readonly unsafe ref struct AudioBuffers
 public readonly record struct EditorSize(uint Width, uint Height);
 
 /// <summary>
-/// A thin, managed view over the native <c>daux_host_callbacks</c> table. An
+/// A thin, managed view over the native <c>daux_host_callbacks</c> table
+/// (<c>DAUx/Host/HostCallbacks.h</c>). An
 /// editor uses it to notify the host of parameter edits (so the host records
 /// automation) and to request a resize. Lifetime: valid for as long as the
 /// editor that received it.
@@ -180,7 +181,8 @@ public sealed unsafe class HostBridge
 
 /// <summary>
 /// A plugin editor (GUI). Implemented by the toolkit-specific layer (e.g. the
-/// Avalonia editor in the example). Mirrors <c>daux_editor_vtable</c>. All calls
+/// Avalonia editor in the example). Mirrors <c>daux_editor_vtable</c>
+/// (<c>DAUx/Editor/Editor.h</c>). All calls
 /// arrive on the host UI thread.
 /// </summary>
 public interface IDauxEditor : IDisposable

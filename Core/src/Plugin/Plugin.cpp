@@ -5,7 +5,7 @@
  * factory/vtable with RAII. Windows-first (LoadLibrary/GetProcAddress); a POSIX
  * path is provided so the code also builds on Linux/macOS.
  */
-#include "daux_core.hpp"
+#include <DAUx/Core.hpp>
 
 #include <utility>
 #include <filesystem>

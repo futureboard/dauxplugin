@@ -26,7 +26,8 @@ public static unsafe class DauxRuntime
     private static bool _initialized;
 
     /// <summary>
-    /// Implements the body of the exported <c>daux_plugin_entry</c>. The plugin
+    /// Implements the body of the exported <c>daux_plugin_entry</c>
+    /// (<c>DAUx/Plugin/EntryPoint.h</c>). The plugin
     /// supplies its descriptor, parameter table and an activator delegate. Call
     /// from the plugin's [UnmanagedCallersOnly(EntryPoint="daux_plugin_entry")].
     /// </summary>

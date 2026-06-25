@@ -13,7 +13,7 @@
 #include <vector>
 #include <cstdint>
 
-#include "daux_core.hpp"
+#include <DAUx/Core.hpp>
 
 namespace dauxhost {
 

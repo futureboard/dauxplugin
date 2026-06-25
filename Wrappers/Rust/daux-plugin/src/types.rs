@@ -4,7 +4,7 @@
 
 use daux_plugin_sys as sys;
 
-/// Plugin category. Mirrors `daux_plugin_category`.
+/// Plugin category. Mirrors `DAUx/Plugin/Category.h`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Category {
     Effect,

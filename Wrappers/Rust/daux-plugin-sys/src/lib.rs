@@ -1,20 +1,16 @@
 //! Raw FFI bindings to the **DAUx Plugin C ABI**.
 //!
-//! These are hand-written (not bindgen-generated) so the crate has no build
-//! dependencies and the layout is auditable against the C headers in
-//! `daux/Core/include`. Every `struct` is `#[repr(C)]` and every field order
-//! mirrors the corresponding header exactly. If you change a header, change
-//! this file in lockstep and keep `DAUX_ABI_VERSION` in sync.
-//!
-//! This crate is `unsafe` by nature and exposes only the C ABI surface. The
-//! safe, ergonomic layer lives in the `daux-plugin` crate.
+//! Hand-written (not bindgen) so the crate has no build dependencies. Layout is
+//! audited against `Core/include/DAUx/DAUx.h` and the modular headers under
+//! `Core/include/DAUx/{Abi,Audio,Plugin,Parameter,State,Editor,Host}/`.
+//! If you change a C header, update this file in lockstep.
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
 use core::ffi::{c_char, c_void};
 
 // ===========================================================================
-// ABI version (mirrors daux_types.h)
+// ABI version (DAUx/Abi/Version.h)
 // ===========================================================================
 pub const DAUX_ABI_VERSION_MAJOR: u32 = 1;
 pub const DAUX_ABI_VERSION_MINOR: u32 = 0;
@@ -41,7 +37,7 @@ pub const DAUX_SHORT_SIZE: usize = 32;
 pub const DAUX_VENDOR_SIZE: usize = 128;
 
 // ===========================================================================
-// Result codes
+// Result codes (DAUx/Abi/Result.h)
 // ===========================================================================
 pub type daux_result = i32;
 pub const DAUX_OK: daux_result = 0;
@@ -55,19 +51,21 @@ pub const DAUX_ERR_BUFFER_TOO_SMALL: daux_result = -7;
 pub const DAUX_ERR_ABI_MISMATCH: daux_result = -8;
 pub const DAUX_ERR_NOT_FOUND: daux_result = -9;
 pub const DAUX_ERR_IO: daux_result = -10;
+pub const DAUX_ERROR_PLUGIN_FAILED: daux_result = -11;
+pub const DAUX_ERROR_HOST_FAILED: daux_result = -12;
 
 pub type daux_bool = i32;
 pub const DAUX_TRUE: daux_bool = 1;
 pub const DAUX_FALSE: daux_bool = 0;
 
-// Opaque handles.
+// Opaque handles (DAUx/Abi/Types.h)
 pub type daux_plugin_handle = *mut c_void;
 pub type daux_editor_handle = *mut c_void;
 pub type daux_host_context = *mut c_void;
 pub type daux_native_window = *mut c_void;
 pub type daux_param_id = u32;
 
-// Category.
+// Category (DAUx/Plugin/Category.h)
 pub type daux_plugin_category = i32;
 pub const DAUX_CATEGORY_UNKNOWN: daux_plugin_category = 0;
 pub const DAUX_CATEGORY_EFFECT: daux_plugin_category = 1;
@@ -75,12 +73,12 @@ pub const DAUX_CATEGORY_INSTRUMENT: daux_plugin_category = 2;
 pub const DAUX_CATEGORY_MIDI_FX: daux_plugin_category = 3;
 pub const DAUX_CATEGORY_ANALYZER: daux_plugin_category = 4;
 
-// Sample format.
+// Sample format (DAUx/Audio/SampleFormat.h)
 pub type daux_sample_format = i32;
 pub const DAUX_SAMPLE_F32: daux_sample_format = 0;
 pub const DAUX_SAMPLE_F64: daux_sample_format = 1;
 
-// Parameter flags.
+// Parameter flags (DAUx/Parameter/ParameterFlags.h)
 pub type daux_param_flags = i32;
 pub const DAUX_PARAM_NONE: daux_param_flags = 0;
 pub const DAUX_PARAM_AUTOMATABLE: daux_param_flags = 1 << 0;
@@ -88,7 +86,7 @@ pub const DAUX_PARAM_STEPPED: daux_param_flags = 1 << 1;
 pub const DAUX_PARAM_READ_ONLY: daux_param_flags = 1 << 2;
 pub const DAUX_PARAM_IS_BYPASS: daux_param_flags = 1 << 3;
 
-// Capabilities.
+// Capabilities (DAUx/Plugin/Capabilities.h)
 pub type daux_plugin_caps = i32;
 pub const DAUX_CAP_NONE: daux_plugin_caps = 0;
 pub const DAUX_CAP_EDITOR: daux_plugin_caps = 1 << 0;
@@ -98,7 +96,7 @@ pub const DAUX_CAP_STATE: daux_plugin_caps = 1 << 3;
 pub const DAUX_CAP_PRESETS: daux_plugin_caps = 1 << 4;
 
 // ===========================================================================
-// POD structs
+// POD structs (DAUx/Audio, Parameter, Plugin, Editor)
 // ===========================================================================
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -168,7 +166,7 @@ pub struct daux_plugin_descriptor {
     pub reserved: [u32; 8],
 }
 
-// Editor geometry.
+// Editor geometry (DAUx/Editor/EditorBounds.h)
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct daux_size {
@@ -184,9 +182,7 @@ pub struct daux_rect {
     pub height: u32,
 }
 
-// ===========================================================================
-// Host callbacks
-// ===========================================================================
+// Host callbacks (DAUx/Host/HostCallbacks.h)
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct daux_host_callbacks {
@@ -203,9 +199,7 @@ pub struct daux_host_callbacks {
     pub reserved: [*mut c_void; 8],
 }
 
-// ===========================================================================
-// Editor vtable
-// ===========================================================================
+// Editor vtable (DAUx/Editor/Editor.h)
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct daux_editor_vtable {
@@ -227,9 +221,7 @@ pub struct daux_editor {
     pub vtable: *const daux_editor_vtable,
 }
 
-// ===========================================================================
-// Plugin vtable
-// ===========================================================================
+// Plugin vtable (DAUx/Plugin/Plugin.h)
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct daux_plugin_vtable {
@@ -269,9 +261,7 @@ pub struct daux_plugin_instance {
     pub vtable: *const daux_plugin_vtable,
 }
 
-// ===========================================================================
-// Factory + entry point
-// ===========================================================================
+// Factory + entry point (DAUx/Plugin/EntryPoint.h)
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct daux_plugin_factory {

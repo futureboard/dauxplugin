@@ -2,8 +2,9 @@
 //!
 //! Safe, ergonomic Rust SDK for writing **DAUx** plugins. You implement the
 //! [`DauxPlugin`] trait and invoke [`daux_export_plugin!`] once; the macro
-//! generates the C ABI entry point, factory and vtable and bridges every call
-//! to your type. All `unsafe` FFI lives in this crate, not your plugin.
+//! generates the C ABI entry point (`DAUx/Plugin/EntryPoint.h`), factory and
+//! vtable and bridges every call to your type. All `unsafe` FFI lives in this
+//! crate, not your plugin.
 //!
 //! ```ignore
 //! use daux_plugin::*;

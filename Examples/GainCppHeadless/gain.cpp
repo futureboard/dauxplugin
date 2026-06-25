@@ -8,9 +8,9 @@
  *   - get_state/set_state round-tripping the parameter,
  *   - no editor (DAUX_CAP_EDITOR not set).
  *
- * It depends ONLY on the public C ABI (daux::abi), never on daux_core.hpp.
+ * It depends ONLY on the public C ABI (daux::abi), never on DAUx/Core.hpp.
  */
-#include "daux_plugin.h"
+#include <DAUx/DAUx.h>
 
 #include <cmath>
 #include <cstdio>

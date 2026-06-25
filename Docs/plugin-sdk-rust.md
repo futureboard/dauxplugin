@@ -3,7 +3,7 @@
 Two crates in [`daux/Wrappers/Rust`](../Wrappers/Rust):
 
 - **`daux-plugin-sys`** — raw, hand-written FFI bindings to the C ABI. `unsafe`,
-  `#[repr(C)]` structs that mirror `daux/Core/include` field-for-field. No build
+  `#[repr(C)]` structs that mirror `Core/include/DAUx/DAUx.h` field-for-field. No build
   dependencies.
 - **`daux-plugin`** — the safe, ergonomic layer: the `DauxPlugin` trait, safe
   `Buffers` / `ProcessContext` views, and the `daux_export_plugin!` macro that

@@ -1,17 +1,19 @@
-// Interop.cs - blittable native struct definitions and constants mirroring the
-// DAUx Plugin C ABI (see daux/Core/include/daux_*.h).
+// Interop.cs - blittable native struct definitions mirroring the DAUx Plugin C ABI.
+//
+// Source of truth: Core/include/DAUx/DAUx.h and the modular headers under
+// Core/include/DAUx/{Abi,Audio,Plugin,Parameter,State,Editor,Host}/.
 //
 // Every struct is StructLayout(Sequential) and field-for-field identical to the
 // C headers. Function-pointer fields are stored as IntPtr and filled with
-// `&UnmanagedCallersOnly` thunks at runtime (see DauxRuntime). Fixed-size char
-// buffers use `fixed byte` so the structs stay blittable and can be written
-// directly into unmanaged memory handed to the host.
+// `&UnmanagedCallersOnly` thunks at runtime (see DauxRuntime).
 //
 // NOTE: keep these in lockstep with the C headers; bump nothing here without
-// matching daux_types.h.
+// matching the corresponding DAUx header.
 using System.Runtime.InteropServices;
 
 namespace Daux.Plugin;
+
+// --- DAUx/Abi ----------------------------------------------------------------
 
 internal static class Abi
 {
@@ -35,6 +37,8 @@ internal static class Abi
     public const int ErrAbiMismatch = -8;
     public const int ErrNotFound = -9;
     public const int ErrIo = -10;
+    public const int ErrPluginFailed = -11;
+    public const int ErrHostFailed = -12;
 
     public const int CatUnknown = 0;
     public const int CatEffect = 1;
@@ -65,6 +69,8 @@ internal static class Abi
 
     public static uint AbiVersion => MakeVersion(AbiVersionMajor, AbiVersionMinor, AbiVersionPatch);
 }
+
+// --- DAUx/Audio/ProcessContext.h, AudioBuffer.h -----------------------------
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct DauxProcessContext
@@ -105,6 +111,8 @@ internal unsafe struct DauxProcessData
     public uint R0, R1, R2, R3;
 }
 
+// --- DAUx/Parameter/ParameterInfo.h -----------------------------------------
+
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct DauxParamInfo
 {
@@ -119,6 +127,8 @@ internal unsafe struct DauxParamInfo
     public int Flags;
     public uint R0, R1, R2, R3;
 }
+
+// --- DAUx/Plugin/Descriptor.h -----------------------------------------------
 
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct DauxPluginDescriptor
@@ -135,6 +145,8 @@ internal unsafe struct DauxPluginDescriptor
     public uint R0, R1, R2, R3, R4, R5, R6, R7;
 }
 
+// --- DAUx/Host/HostCallbacks.h ----------------------------------------------
+
 // Function-pointer-bearing structs use IntPtr fields filled at runtime.
 [StructLayout(LayoutKind.Sequential)]
 internal struct DauxHostCallbacks
@@ -149,6 +161,8 @@ internal struct DauxHostCallbacks
     public IntPtr Log;
     public IntPtr R0, R1, R2, R3, R4, R5, R6, R7;
 }
+
+// --- DAUx/Plugin/Plugin.h ---------------------------------------------------
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct DauxPluginInstance
@@ -180,6 +194,8 @@ internal struct DauxPluginVtable
     public IntPtr DestroyEditor;
     public IntPtr R0, R1, R2, R3, R4, R5, R6, R7;
 }
+
+// --- DAUx/Editor/EditorBounds.h, Editor.h -----------------------------------
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct DauxSize
@@ -217,6 +233,8 @@ internal struct DauxEditorVtable
     public IntPtr Idle;
     public IntPtr R0, R1, R2, R3, R4, R5;
 }
+
+// --- DAUx/Plugin/EntryPoint.h -----------------------------------------------
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct DauxPluginFactory

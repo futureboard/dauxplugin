@@ -6,17 +6,20 @@ small, POD/handle/function-pointer based, and free of any STL / Rust / .NET
 types so that plugins and hosts written in different languages and compiled with
 different toolchains interoperate.
 
-Headers live in [`daux/Core/include`](../Core/include):
+Headers live in [`Core/include/DAUx`](../Core/include/DAUx):
 
 | Header | Purpose |
 |---|---|
-| `daux_export.h` | Calling convention (`cdecl`) + export macros |
-| `daux_types.h`  | POD types, enums, result codes, descriptor, process data |
-| `daux_host.h`   | Host callback table passed to the plugin |
-| `daux_editor.h` | Editor (GUI) interface |
-| `daux_plugin.h` | Entry point, factory, per-instance vtable |
+| `DAUx/DAUx.h` | Umbrella — full public C ABI |
+| `DAUx/Abi/*.h` | Export macros, result codes, version, core typedefs |
+| `DAUx/Audio/*.h` | Sample format, buffers, buses, process context |
+| `DAUx/Plugin/*.h` | Descriptor, factory, vtable, entry point |
+| `DAUx/Parameter/*.h` | Parameter info and flags |
+| `DAUx/State/*.h` | State blob and callbacks |
+| `DAUx/Editor/*.h` | Editor (GUI) interface |
+| `DAUx/Host/*.h` | Host callback table passed to the plugin |
 
-> `daux_core.hpp` is **not** part of the ABI. It is a C++ host-side helper
+> `DAUx/Core.hpp` is **not** part of the ABI. It is a C++ host-side helper
 > (RAII loader, etc.). Plugins must never include it.
 
 ## Versioning
@@ -77,7 +80,7 @@ A `.dauxplug` may be **either**:
     manifest.xml        optional metadata + entry override
   ```
 
-  Entry resolution (see `daux_core` `resolve_module_path`): `manifest.xml`
+  Entry resolution (see `daux::PluginModule` / `resolve_module_path`): `manifest.xml`
   `<exec>` under `Exec/`, else `Exec/Name.dll` (Name = bundle stem), else any
   `*.dll` under `Exec/`, else a legacy flat `Name.dll`. The host registers
   `Library/` (+ `Exec/` + root) on the DLL search path (`AddDllDirectory` +
@@ -163,7 +166,7 @@ See [`dauxhost-protocol.md`](dauxhost-protocol.md).
 
 ## Result codes
 
-`daux_result` — `0` success, negative error (see `daux_types.h`). Helper
+`daux_result` — `0` success, negative error (see `DAUx/Abi/Result.h`). Helper
 `daux::result_to_string()` formats them.
 
 ## Design rules
@@ -173,7 +176,7 @@ See [`dauxhost-protocol.md`](dauxhost-protocol.md).
 3. Headers split by concern: types / plugin / host / editor.
 4. Explicit result-code enum.
 5. Consistent `daux_` / `DAUx` prefixes.
-6. Internal C++ (`daux_core`) kept separate from the public ABI.
+6. Internal C++ (`daux_core` library / `DAUx/Core.hpp`) kept separate from the public ABI.
 7. No Futureboard-specific logic baked into the ABI.
 8. Maps onto VST-like concepts (buses/params/state/editor) without copying any
    specific plugin API.

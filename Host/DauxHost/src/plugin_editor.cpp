@@ -10,7 +10,7 @@
  * TODO tracked against DAUxHost --mode=editor.
  */
 #include "host.hpp"
-#include "daux_editor.h"
+#include <DAUx/Editor/Editor.h>
 
 #include <cstdio>
 

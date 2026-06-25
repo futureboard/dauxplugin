@@ -1,6 +1,4 @@
-//! Safe views over the realtime process data. Constructed by the export layer
-//! from a raw `*const daux_process_data` for the duration of one `process()`
-//! call, then handed to the plugin's `process` method.
+//! Safe views over `DAUx/Audio/ProcessContext.h` process data for one `process()` call.
 
 use daux_plugin_sys as sys;
 
