@@ -6,5 +6,6 @@
 
 #include <DAUx/Host/HostCallbacks.h>
 #include <DAUx/Host/HostEvents.h>
+#include <DAUx/Host/HostServices.h>
 
 #endif /* DAUX_HOST_HOST_H */

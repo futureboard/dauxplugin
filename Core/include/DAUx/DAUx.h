@@ -15,6 +15,11 @@
 #include <DAUx/Audio/ChannelLayout.h>
 #include <DAUx/Audio/ProcessContext.h>
 
+#include <DAUx/Event/Event.h>
+#include <DAUx/Event/EventQueue.h>
+
+#include <DAUx/Automation/Automation.h>
+
 #include <DAUx/Plugin/Category.h>
 #include <DAUx/Plugin/Capabilities.h>
 #include <DAUx/Plugin/Descriptor.h>
@@ -30,12 +35,33 @@
 #include <DAUx/State/StateBlob.h>
 #include <DAUx/State/State.h>
 
+#include <DAUx/Program/Program.h>
+#include <DAUx/Program/Preset.h>
+#include <DAUx/Program/ProgramList.h>
+
+#include <DAUx/Component/ProcessData.h>
+#include <DAUx/Component/Processor.h>
+#include <DAUx/Component/Controller.h>
+#include <DAUx/Component/ComponentState.h>
+#include <DAUx/Component/Component.h>
+
 #include <DAUx/Editor/NativeWindow.h>
 #include <DAUx/Editor/EditorBounds.h>
 #include <DAUx/Editor/Editor.h>
 
+#include <DAUx/Gui/GuiFramework.h>
+#include <DAUx/Gui/GuiMessage.h>
+#include <DAUx/Gui/GuiSurface.h>
+#include <DAUx/Gui/GuiView.h>
+#include <DAUx/Gui/GuiHost.h>
+
 #include <DAUx/Host/HostCallbacks.h>
 #include <DAUx/Host/HostEvents.h>
+#include <DAUx/Host/HostServices.h>
 #include <DAUx/Host/Host.h>
+
+#include <DAUx/Factory/PluginClassInfo.h>
+#include <DAUx/Factory/PluginFactory.h>
+#include <DAUx/Factory/PluginClassRegistry.h>
 
 #endif /* DAUX_DAUX_H */

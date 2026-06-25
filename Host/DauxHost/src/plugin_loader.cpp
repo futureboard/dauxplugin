@@ -36,6 +36,60 @@ std::string json_escape(const char* s) {
     return o;
 }
 
+const char* gui_framework_name(DAUxGuiFramework f) {
+    switch (f) {
+        case DAUX_GUI_FRAMEWORK_NATIVE:   return "native";
+        case DAUX_GUI_FRAMEWORK_WIN32:    return "win32";
+        case DAUX_GUI_FRAMEWORK_COCOA:    return "cocoa";
+        case DAUX_GUI_FRAMEWORK_GPUI:     return "gpui";
+        case DAUX_GUI_FRAMEWORK_AVALONIA: return "avalonia";
+        case DAUX_GUI_FRAMEWORK_QT:       return "qt";
+        case DAUX_GUI_FRAMEWORK_WEBVIEW:  return "webview";
+        case DAUX_GUI_FRAMEWORK_SWIFTUI:  return "swiftui";
+        default:                          return "unknown";
+    }
+}
+
+const char* editor_mode_name(DAUxEditorMode m) {
+    return m == DAUX_EDITOR_MODE_EXTERNAL ? "external" : "embedded";
+}
+
+void dump_modern_factory(const daux::PluginModule& mod, bool json) {
+    const DAUxPluginFactory* mf = mod.modern_factory();
+    if (!mf || !mf->get_class_count) return;
+
+    const uint32_t n = mf->get_class_count();
+    if (json) {
+        std::printf(",\n  \"factory_classes\": [");
+        for (uint32_t i = 0; i < n; ++i) {
+            DAUxPluginClassInfo ci{};
+            if (mf->get_class_info && mf->get_class_info(i, &ci) == DAUX_OK) {
+                std::printf("%s\n    {\"class_id\": \"%s\", \"name\": \"%s\", "
+                            "\"gui_framework\": \"%s\", \"editor_mode\": \"%s\"}",
+                            i ? "," : "",
+                            json_escape(ci.class_id ? ci.class_id : "").c_str(),
+                            json_escape(ci.name ? ci.name : "").c_str(),
+                            gui_framework_name(ci.gui_framework),
+                            editor_mode_name(ci.default_editor_mode));
+            }
+        }
+        std::printf("\n  ]");
+        return;
+    }
+
+    std::printf("  factory  : %u class(es)\n", n);
+    for (uint32_t i = 0; i < n; ++i) {
+        DAUxPluginClassInfo ci{};
+        if (mf->get_class_info && mf->get_class_info(i, &ci) == DAUX_OK) {
+            std::printf("    [%u] %s (%s) gui=%s mode=%s\n", i,
+                        ci.name ? ci.name : "?",
+                        ci.class_id ? ci.class_id : "?",
+                        gui_framework_name(ci.gui_framework),
+                        editor_mode_name(ci.default_editor_mode));
+        }
+    }
+}
+
 } // namespace
 
 void dump_metadata(const daux::PluginModule& mod, daux::PluginInstance& inst, bool json) {
@@ -69,7 +123,9 @@ void dump_metadata(const daux::PluginModule& mod, daux::PluginInstance& inst, bo
                         json_escape(info.unit).c_str(),
                         info.min_value, info.max_value, info.default_value);
         }
-        std::printf("%s]\n}\n", pcount ? "\n  " : "");
+        std::printf("%s]", pcount ? "\n  " : "");
+        dump_modern_factory(mod, true);
+        std::printf("\n}\n");
         return;
     }
 
@@ -92,6 +148,7 @@ void dump_metadata(const daux::PluginModule& mod, daux::PluginInstance& inst, bo
         std::printf("    [%u] %-16s %g..%g (def %g) %s\n", info.id, info.name,
                     info.min_value, info.max_value, info.default_value, info.unit);
     }
+    dump_modern_factory(mod, false);
 }
 
 } // namespace dauxhost

@@ -6,6 +6,7 @@
  * path is provided so the code also builds on Linux/macOS.
  */
 #include <DAUx/Core.hpp>
+#include <DAUx/Factory/PluginFactory.h>
 
 #include <utility>
 #include <filesystem>
@@ -212,9 +213,23 @@ PluginModule::PluginModule(const std::string& path) : path_(path) {
         throw DauxError("failed to load '" + path + "': " + err, DAUX_ERR_IO);
     }
 
+    if (auto mf_fn = reinterpret_cast<daux_get_plugin_factory_fn>(
+            os_get_symbol(lib_, DAUX_PLUGIN_FACTORY_SYMBOL))) {
+        modern_factory_ = mf_fn();
+    }
+
     auto entry = reinterpret_cast<daux_plugin_entry_fn>(
         os_get_symbol(lib_, DAUX_PLUGIN_ENTRY_SYMBOL));
     if (!entry) {
+        if (modern_factory_ && modern_factory_->get_legacy_descriptor) {
+            descriptor_ = modern_factory_->get_legacy_descriptor();
+            if (!descriptor_) {
+                unload();
+                throw DauxError("modern factory returned null legacy descriptor",
+                                DAUX_ERR_INVALID_STATE);
+            }
+            return;
+        }
         unload();
         throw DauxError("'" + path + "' is not a DAUx plugin: missing entry symbol '"
                             + DAUX_PLUGIN_ENTRY_SYMBOL + "'",
@@ -249,8 +264,10 @@ PluginModule::~PluginModule() { unload(); }
 
 PluginModule::PluginModule(PluginModule&& o) noexcept
     : path_(std::move(o.path_)), lib_(o.lib_),
-      factory_(o.factory_), descriptor_(o.descriptor_) {
+      factory_(o.factory_), descriptor_(o.descriptor_),
+      modern_factory_(o.modern_factory_) {
     o.lib_ = nullptr; o.factory_ = nullptr; o.descriptor_ = nullptr;
+    o.modern_factory_ = nullptr;
 }
 
 PluginModule& PluginModule::operator=(PluginModule&& o) noexcept {
@@ -258,7 +275,9 @@ PluginModule& PluginModule::operator=(PluginModule&& o) noexcept {
         unload();
         path_ = std::move(o.path_);
         lib_ = o.lib_; factory_ = o.factory_; descriptor_ = o.descriptor_;
+        modern_factory_ = o.modern_factory_;
         o.lib_ = nullptr; o.factory_ = nullptr; o.descriptor_ = nullptr;
+        o.modern_factory_ = nullptr;
     }
     return *this;
 }
@@ -266,6 +285,7 @@ PluginModule& PluginModule::operator=(PluginModule&& o) noexcept {
 void PluginModule::unload() noexcept {
     factory_ = nullptr;
     descriptor_ = nullptr;
+    modern_factory_ = nullptr;
     if (lib_) {
         os_free_library(lib_);
         lib_ = nullptr;
@@ -273,6 +293,10 @@ void PluginModule::unload() noexcept {
 }
 
 PluginInstance PluginModule::create(const daux_host_callbacks* host) {
+    if (!factory_) {
+        throw DauxError("plugin module has no legacy factory (modern-only factory not yet wired for create)",
+                        DAUX_ERR_NOT_SUPPORTED);
+    }
     daux_plugin_instance inst{nullptr, nullptr};
     daux_result r = factory_->create(host, &inst);
     if (r != DAUX_OK || !inst.handle || !inst.vtable) {

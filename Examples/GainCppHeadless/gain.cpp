@@ -240,3 +240,41 @@ DAUX_API const daux_plugin_factory* DAUX_CALL daux_plugin_entry(uint32_t host_ab
         return nullptr;
     return &g_factory;
 }
+
+/* Optional modern factory export (additive; legacy entry remains authoritative). */
+static uint32_t DAUX_CALL mf_class_count(void) { return 1; }
+
+static daux_result DAUX_CALL mf_class_info(uint32_t index, DAUxPluginClassInfo* out) {
+    if (!out || index != 0) return DAUX_ERR_INVALID_ARG;
+    std::memset(out, 0, sizeof(*out));
+    out->class_id = "com.daux.examples.gain.cpp";
+    out->name = "DAUx Gain (C++)";
+    out->vendor = "DAUx";
+    out->version = {1, 0, 0, 0};
+    out->category = DAUX_PLUGIN_CATEGORY_EFFECT;
+    out->capabilities = DAUX_CAP_STATE;
+    out->gui_framework = DAUX_GUI_FRAMEWORK_NATIVE;
+    out->default_editor_mode = DAUX_EDITOR_MODE_EMBEDDED;
+    out->audio_input_bus_count = 1;
+    out->audio_output_bus_count = 1;
+    return DAUX_OK;
+}
+
+static const daux_plugin_descriptor* DAUX_CALL mf_legacy_descriptor(void) {
+    return fac_get_descriptor();
+}
+
+static const DAUxPluginFactory g_modern_factory = [] {
+    DAUxPluginFactory f{};
+    f.struct_size = sizeof(DAUxPluginFactory);
+    f.abi_version = DAUX_ABI_VERSION;
+    f.get_class_count = mf_class_count;
+    f.get_class_info = mf_class_info;
+    f.create_component_by_class_id = nullptr;
+    f.get_legacy_descriptor = mf_legacy_descriptor;
+    return f;
+}();
+
+DAUX_API const DAUxPluginFactory* daux_get_plugin_factory(void) {
+    return &g_modern_factory;
+}

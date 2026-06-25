@@ -14,5 +14,6 @@
   <vendor>DAUx</vendor>
   <version>0.1.0</version>
   <category>effect</category>
+  <gui framework="avalonia" editor-mode="external"/>
   <exec>daux_gain_dotnet.dll</exec>
 </daux-plugin>

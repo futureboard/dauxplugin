@@ -7,8 +7,8 @@
 //!   - state round-trips the parameter,
 //!   - exports the C ABI via `daux_export_plugin!`.
 //!
-//! The "GPUI/DAUx" editor is scaffolded but not yet wired (see `editor` module
-//! and the TODOs). The audio path is fully functional today.
+//! Planned GUI: `DAUxGuiFramework::GPUI` with `DAUX_EDITOR_MODE_EXTERNAL`
+//! (see Docs/plugin-gui-framework.md). Editor wiring is not implemented yet.
 
 use daux_plugin::*;
 

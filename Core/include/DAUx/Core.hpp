@@ -11,6 +11,12 @@
 #include <DAUx/Runtime/PluginRegistry.hpp>
 #include <DAUx/Runtime/PluginInstance.hpp>
 #include <DAUx/Runtime/PluginLoader.hpp>
+#include <DAUx/Runtime/PluginHost.hpp>
+#include <DAUx/Runtime/PluginFactory.hpp>
+#include <DAUx/Runtime/PluginComponent.hpp>
+#include <DAUx/Runtime/PluginProcessor.hpp>
+#include <DAUx/Runtime/PluginController.hpp>
+#include <DAUx/Runtime/PluginEditor.hpp>
 
 #include <string>
 #include <stdexcept>
@@ -46,6 +52,7 @@ public:
 
     const daux_plugin_factory*    factory() const noexcept { return factory_; }
     const daux_plugin_descriptor* descriptor() const noexcept { return descriptor_; }
+    const DAUxPluginFactory*      modern_factory() const noexcept { return modern_factory_; }
     const std::string&            path() const noexcept { return path_; }
 
     PluginInstance create(const daux_host_callbacks* host = nullptr);
@@ -57,6 +64,7 @@ private:
     void*                         lib_        = nullptr;
     const daux_plugin_factory*    factory_    = nullptr;
     const daux_plugin_descriptor* descriptor_ = nullptr;
+    const DAUxPluginFactory*      modern_factory_ = nullptr;
 };
 
 class PluginInstance {
