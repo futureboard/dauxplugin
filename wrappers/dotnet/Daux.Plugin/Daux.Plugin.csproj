@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Daux.Plugin - managed SDK for writing DAUx plugins in C#.
+
+    Architecture note (why NativeAOT):
+    A DAUx plugin must export a single C function, `daux_plugin_entry`, from a
+    native dynamic library. The CLR cannot normally export C symbols from a
+    managed assembly. The supported, no-extra-shim way to do this is .NET
+    NativeAOT, which:
+      * compiles the managed code ahead-of-time to a native library, and
+      * exports static methods marked [UnmanagedCallersOnly(EntryPoint=...)].
+
+    Therefore the plugin BOUNDARY is pure C ABI (function pointers, blittable
+    POD structs) - no managed types cross it. This library compiles as a normal
+    class library (so `dotnet build` works for development/IntelliSense); the
+    EXAMPLE plugin publishes itself as a NativeAOT shared library and renames
+    the artifact to *.dauxplug. See daux/docs/plugin-sdk-dotnet.md.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsAotCompatible>true</IsAotCompatible>
+    <RootNamespace>Daux.Plugin</RootNamespace>
+    <AssemblyName>Daux.Plugin</AssemblyName>
+  </PropertyGroup>
+
+</Project>

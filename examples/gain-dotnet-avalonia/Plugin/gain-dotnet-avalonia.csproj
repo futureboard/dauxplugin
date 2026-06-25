@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    gain-dotnet-avalonia - the shippable NativeAOT plugin shell. It contains
+    only the native entry point (Entry.cs) and references Daux.Examples.Gain for
+    the actual plugin + Avalonia editor.
+
+    Build (managed):  dotnet build
+    Ship  (.dauxplug): dotnet publish -r win-x64 -c Release
+                       -> bin/Release/net8.0/win-x64/native/gain-dotnet-avalonia.dll
+                       then rename/copy to *.dauxplug.
+
+    RuntimeIdentifier is intentionally NOT set here so a plain `dotnet build`
+    stays RID-agnostic; pass -r win-x64 on publish.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <OutputType>Library</OutputType>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <AssemblyName>gain-dotnet-avalonia</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Daux.Examples.Gain\Daux.Examples.Gain.csproj" />
+  </ItemGroup>
+
+</Project>

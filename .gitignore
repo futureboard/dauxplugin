@@ -1,0 +1,17 @@
+# CMake / C++
+/build/
+*.dauxplug
+
+# Rust
+target/
+**/target/
+Cargo.lock
+
+# .NET
+bin/
+obj/
+
+# Editor / OS
+.vs/
+*.user
+.DS_Store

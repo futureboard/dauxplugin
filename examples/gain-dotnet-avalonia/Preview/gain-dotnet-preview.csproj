@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    gain-dotnet-preview - a runnable harness for the Avalonia gain editor.
+
+      dotnet run (from this Preview directory)
+
+    It hosts the same GainEditorWindow the plugin uses, bound to a fresh
+    GainPlugin, under a normal classic desktop lifetime. This lets you see and
+    interact with the editor without a DAW / DAUxHost.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>gain-dotnet-preview</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Daux.Examples.Gain\Daux.Examples.Gain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Daux.Examples.Gain.GainEditorWindow"
+        Width="360" Height="200"
+        CanResize="False"
+        Title="DAUx Gain (.NET)"
+        Background="#1E1E24">
+    <Border Padding="20">
+        <StackPanel Spacing="14">
+            <TextBlock Text="DAUx Gain (.NET)"
+                       FontSize="18" FontWeight="SemiBold"
+                       Foreground="#E8E8F0" />
+            <TextBlock Text="Avalonia/DAUx editor"
+                       FontSize="11" Foreground="#8A8AA0" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="Gain" VerticalAlignment="Center"
+                           Foreground="#C8C8D8" Width="40" />
+                <Slider x:Name="GainSlider"
+                        Minimum="-60" Maximum="12" Value="0"
+                        Width="200" VerticalAlignment="Center" />
+                <TextBlock x:Name="GainValue" Text="0.0 dB"
+                           VerticalAlignment="Center"
+                           Foreground="#E8E8F0" Width="60"
+                           TextAlignment="Right" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

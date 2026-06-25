@@ -1,0 +1,9 @@
+[package]
+name = "daux-plugin"
+version = "0.1.0"
+edition = "2021"
+description = "Safe, ergonomic Rust SDK for writing DAUx plugins"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+daux-plugin-sys = { path = "../daux-plugin-sys" }

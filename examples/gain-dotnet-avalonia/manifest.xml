@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DAUx plugin bundle manifest.
+
+  Placed at the root of a "Name.dauxplug/" bundle. Optional metadata that lets a
+  host scan/validate a bundle without loading native code; the authoritative
+  values still come from the plugin's descriptor at load time. The <exec>
+  element names the entry module under Exec/ (overrides the default
+  "<bundle-stem>.dll" convention).
+-->
+<daux-plugin abi="1.0.0">
+  <id>com.daux.examples.gain.dotnet</id>
+  <name>DAUx Gain (.NET)</name>
+  <vendor>DAUx</vendor>
+  <version>0.1.0</version>
+  <category>effect</category>
+  <exec>daux_gain_dotnet.dll</exec>
+</daux-plugin>

@@ -1,0 +1,14 @@
+# Cargo workspace for the DAUx Rust wrapper SDK.
+#
+#   daux-plugin-sys : raw FFI bindings to the DAUx C ABI.
+#   daux-plugin     : safe, ergonomic wrapper (trait + export macro).
+#   examples/...     : example plugins built as cdylib -> *.dauxplug.
+[workspace]
+resolver = "2"
+members = [
+    "daux-plugin-sys",
+    "daux-plugin",
+]
+# The example plugin (daux/examples/gain-rust-gpui) lives outside this directory
+# so it cannot be a workspace member; it is a standalone crate that depends on
+# daux-plugin by path. Build it from its own directory with `cargo build`.
