@@ -45,16 +45,19 @@ impl Category {
         Category::Unknown,
     ];
 
-    /// [any-thread] The ABI code for this category (abi-v1 §6).
+    /// [any-thread] The ABI code for this category, `DAUX_CATEGORY_*` (abi-v1 §6.1).
+    ///
+    /// `Unknown` is `0`, not a sentinel: the spec puts it at the bottom of the range so that
+    /// a zeroed descriptor means "uncategorised" rather than accidentally meaning "effect".
     pub const fn code(self) -> u32 {
         match self {
-            Category::Effect => 0,
-            Category::Instrument => 1,
-            Category::MidiEffect => 2,
-            Category::Analyzer => 3,
-            Category::Generator => 4,
-            Category::Utility => 5,
-            Category::Unknown => u32::MAX,
+            Category::Unknown => 0,
+            Category::Effect => 1,
+            Category::Instrument => 2,
+            Category::MidiEffect => 3,
+            Category::Analyzer => 4,
+            Category::Generator => 5,
+            Category::Utility => 6,
         }
     }
 
@@ -64,12 +67,14 @@ impl Category {
     /// load a plug-in over a category we do not recognise would break forward compatibility.
     pub const fn from_code(code: u32) -> Self {
         match code {
-            0 => Category::Effect,
-            1 => Category::Instrument,
-            2 => Category::MidiEffect,
-            3 => Category::Analyzer,
-            4 => Category::Generator,
-            5 => Category::Utility,
+            1 => Category::Effect,
+            2 => Category::Instrument,
+            3 => Category::MidiEffect,
+            4 => Category::Analyzer,
+            5 => Category::Generator,
+            6 => Category::Utility,
+            // `0` is `DAUX_CATEGORY_UNKNOWN`; anything higher is a category from a later
+            // ABI minor version, and both mean the same thing to this build.
             _ => Category::Unknown,
         }
     }
@@ -145,10 +150,28 @@ mod tests {
         }
     }
 
+    /// Pins every code to the number the specification fixes.
+    ///
+    /// A round-trip test alone cannot catch this: a self-consistent but wrong numbering
+    /// round-trips perfectly and still files every plug-in under the wrong heading in every
+    /// host. `daux-core` cannot depend on `daux-abi`, so the constants are restated here and
+    /// this test is what keeps the two honest.
+    #[test]
+    fn codes_match_abi_v1_section_6_1() {
+        assert_eq!(Category::Unknown.code(), 0, "DAUX_CATEGORY_UNKNOWN");
+        assert_eq!(Category::Effect.code(), 1, "DAUX_CATEGORY_EFFECT");
+        assert_eq!(Category::Instrument.code(), 2, "DAUX_CATEGORY_INSTRUMENT");
+        assert_eq!(Category::MidiEffect.code(), 3, "DAUX_CATEGORY_MIDI_EFFECT");
+        assert_eq!(Category::Analyzer.code(), 4, "DAUX_CATEGORY_ANALYZER");
+        assert_eq!(Category::Generator.code(), 5, "DAUX_CATEGORY_GENERATOR");
+        assert_eq!(Category::Utility.code(), 6, "DAUX_CATEGORY_UTILITY");
+    }
+
     #[test]
     fn an_unknown_code_degrades_instead_of_failing() {
         assert_eq!(Category::from_code(9999), Category::Unknown);
-        assert_eq!(Category::from_code(6), Category::Unknown);
+        // The first code past the ones v1.0 defines: a category from a later minor version.
+        assert_eq!(Category::from_code(7), Category::Unknown);
     }
 
     #[test]
@@ -165,7 +188,10 @@ mod tests {
             "MIDI_Effect".parse::<Category>().unwrap(),
             Category::MidiEffect
         );
-        assert_eq!(" analyser ".parse::<Category>().unwrap(), Category::Analyzer);
+        assert_eq!(
+            " analyser ".parse::<Category>().unwrap(),
+            Category::Analyzer
+        );
         let err = "efect".parse::<Category>().unwrap_err();
         assert_eq!(err.kind(), ErrorKind::InvalidArgument);
         assert!(err.message().contains("efect"));
