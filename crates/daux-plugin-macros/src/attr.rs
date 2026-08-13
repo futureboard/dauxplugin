@@ -26,6 +26,7 @@ use syn::{
 };
 
 /// The value part of one attribute entry.
+#[derive(Debug)]
 pub(crate) enum AttrValue {
     /// `skip` — the key stands alone.
     Flag,
@@ -36,6 +37,7 @@ pub(crate) enum AttrValue {
 }
 
 /// One `key`, `key = value` or `key(a, b)` entry of an attribute.
+#[derive(Debug)]
 pub(crate) struct AttrEntry {
     /// The key. Parsed with `parse_any` so that keywords such as `crate` are accepted.
     pub(crate) key: Ident,
@@ -72,13 +74,9 @@ impl AttrEntry {
         self.key.span()
     }
 
-    /// The span of the value, falling back to the key when there is none.
-    pub(crate) fn value_span(&self) -> Span {
-        match &self.value {
-            AttrValue::Flag => self.key.span(),
-            AttrValue::Value(expr) => expr.span(),
-            AttrValue::List(items) => items.first().map_or_else(|| self.key.span(), Spanned::span),
-        }
+    /// `true` when the key stands alone, with neither `= value` nor `(list)`.
+    pub(crate) fn is_flag(&self) -> bool {
+        matches!(self.value, AttrValue::Flag)
     }
 
     /// The expression after `=`, or an error naming the syntax that was expected.
@@ -129,24 +127,6 @@ impl AttrEntry {
         }
     }
 
-    /// The boolean literal after `=`.
-    pub(crate) fn bool_value(&self, context: &str) -> Result<bool> {
-        let expr = self.expr(context)?;
-        match expr {
-            Expr::Lit(ExprLit {
-                lit: Lit::Bool(lit),
-                ..
-            }) => Ok(lit.value),
-            other => Err(Error::new_spanned(
-                other,
-                format!(
-                    "`{key}` must be `true` or `false`",
-                    key = self.name(),
-                ),
-            )),
-        }
-    }
-
     /// The path after `=`, e.g. `crate = ::daux_plugin`.
     pub(crate) fn path_value(&self, context: &str) -> Result<Path> {
         let expr = self.expr(context)?;
@@ -188,9 +168,11 @@ impl AttrEntry {
                         && path.attrs.is_empty()
                         && path.path.get_ident().is_some() =>
                 {
-                    Ok(path.path.get_ident().cloned().unwrap_or_else(|| {
-                        unreachable!("get_ident() was just checked to be Some")
-                    }))
+                    Ok(path
+                        .path
+                        .get_ident()
+                        .cloned()
+                        .unwrap_or_else(|| unreachable!("get_ident() was just checked to be Some")))
                 }
                 other => Err(Error::new_spanned(
                     other,
@@ -220,6 +202,7 @@ impl AttrEntry {
 
 /// Every entry of one attribute kind on one item, already validated against the set of
 /// keys that item accepts.
+#[derive(Debug)]
 pub(crate) struct AttrSet {
     /// How the attribute is written, for diagnostics — e.g. `#[param(..)]`.
     pub(crate) context: &'static str,
@@ -230,8 +213,19 @@ pub(crate) struct AttrSet {
     entries: Vec<AttrEntry>,
 }
 
+/// Whether a bare `#[foo]` with no arguments means anything for this item.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Bare {
+    /// `#[foo]` is an error naming the syntax the item needs — the right answer wherever
+    /// the attribute exists to carry values, as `#[param(..)]` and `#[plugin(..)]` do.
+    Rejected,
+    /// `#[foo]` means "this item, with every default", as `#[state]` does on a field.
+    Allowed,
+}
+
 impl AttrSet {
-    /// Collects and validates every `#[<path>(..)]` attribute on one item.
+    /// Collects and validates every `#[<path>(..)]` attribute on one item, rejecting a
+    /// bare `#[<path>]`.
     ///
     /// `valid` is the exhaustive list of accepted keys; anything else is a compile error
     /// that lists them (and suggests the nearest one when the key looks like a typo).
@@ -242,6 +236,30 @@ impl AttrSet {
         context: &'static str,
         valid: &'static [&'static str],
         fallback: Span,
+    ) -> Result<Self> {
+        Self::parse_with(attrs, path, context, valid, fallback, Bare::Rejected)
+    }
+
+    /// As [`AttrSet::parse`], but a bare `#[<path>]` is accepted and produces a present,
+    /// empty set.
+    pub(crate) fn parse_allowing_bare(
+        attrs: &[Attribute],
+        path: &str,
+        context: &'static str,
+        valid: &'static [&'static str],
+        fallback: Span,
+    ) -> Result<Self> {
+        Self::parse_with(attrs, path, context, valid, fallback, Bare::Allowed)
+    }
+
+    /// The shared body of the two constructors.
+    fn parse_with(
+        attrs: &[Attribute],
+        path: &str,
+        context: &'static str,
+        valid: &'static [&'static str],
+        fallback: Span,
+        bare: Bare,
     ) -> Result<Self> {
         let mut set = Self {
             context,
@@ -257,6 +275,9 @@ impl AttrSet {
             set.present = true;
 
             if matches!(attr.meta, syn::Meta::Path(_)) {
+                if bare == Bare::Allowed {
+                    continue;
+                }
                 return Err(Error::new_spanned(
                     attr,
                     format!(
@@ -551,8 +572,14 @@ mod tests {
     fn an_unknown_key_lists_the_valid_ones_and_suggests_the_nearest() {
         let error = parse("#[param(nmae = \"Gain\")] struct S;", KEYS).expect_err("unknown key");
         let message = error.to_string();
-        assert!(message.contains("unknown `#[param(..)]` key `nmae`"), "{message}");
-        assert!(message.contains("valid keys: id, name, range, flags, skip, crate"), "{message}");
+        assert!(
+            message.contains("unknown `#[param(..)]` key `nmae`"),
+            "{message}"
+        );
+        assert!(
+            message.contains("valid keys: id, name, range, flags, skip, crate"),
+            "{message}"
+        );
         assert!(message.contains("did you mean `name`?"), "{message}");
     }
 
@@ -564,12 +591,40 @@ mod tests {
 
     #[test]
     fn a_repeated_key_names_both_occurrences() {
-        let error =
-            parse("#[param(id = 1, id = 2)] struct S;", KEYS).expect_err("duplicate key");
+        let error = parse("#[param(id = 1, id = 2)] struct S;", KEYS).expect_err("duplicate key");
         let messages: Vec<String> = error.into_iter().map(|e| e.to_string()).collect();
         assert_eq!(messages.len(), 2, "{messages:?}");
         assert!(messages[0].contains("`id` is set twice"), "{messages:?}");
-        assert!(messages[1].contains("`id` is first set here"), "{messages:?}");
+        assert!(
+            messages[1].contains("`id` is first set here"),
+            "{messages:?}"
+        );
+    }
+
+    #[test]
+    fn a_bare_attribute_is_present_but_empty_when_it_is_allowed() {
+        let bare = attrs("#[state] struct S;");
+        let set =
+            AttrSet::parse_allowing_bare(&bare, "state", "#[state(..)]", KEYS, Span::call_site())
+                .expect("a bare attribute is the whole point here");
+        assert!(set.present, "the attribute was written");
+        assert!(set.is_empty(), "it carries no entries");
+        assert!(set.get("id").is_none());
+
+        // A bare attribute must not erase the entries of a second, non-bare one.
+        let merged = attrs("#[state] #[state(id = 1)] struct S;");
+        let set =
+            AttrSet::parse_allowing_bare(&merged, "state", "#[state(..)]", KEYS, Span::call_site())
+                .expect("merging is allowed");
+        assert!(set.has("id"), "the second attribute still counts");
+    }
+
+    #[test]
+    fn is_flag_distinguishes_the_three_shapes() {
+        let set = parse("#[param(skip, id = 1, flags(hidden))] struct S;", KEYS).expect("parses");
+        assert!(set.get("skip").expect("skip").is_flag());
+        assert!(!set.get("id").expect("id").is_flag());
+        assert!(!set.get("flags").expect("flags").is_flag());
     }
 
     #[test]
@@ -589,7 +644,10 @@ mod tests {
             .expect("skip")
             .expr("#[param(..)]")
             .expect_err("flag has no value");
-        assert!(error.to_string().contains("`skip` needs a value"), "{error}");
+        assert!(
+            error.to_string().contains("`skip` needs a value"),
+            "{error}"
+        );
 
         let error = set
             .get("name")
@@ -681,7 +739,9 @@ mod tests {
     fn first_of_returns_the_earliest_written_key() {
         let set = parse("#[param(name = \"Gain\", range = 0..=1)] struct S;", KEYS).expect("ok");
         assert_eq!(
-            set.first_of(&["range", "name"]).expect("one of them").name(),
+            set.first_of(&["range", "name"])
+                .expect("one of them")
+                .name(),
             "name"
         );
         assert!(set.first_of(&["skip"]).is_none());
@@ -699,7 +759,10 @@ mod tests {
     #[test]
     fn suggestions_scale_with_word_length() {
         assert_eq!(suggest("nmae", KEYS), Some("name"));
-        assert_eq!(suggest("capabilites", &["capabilities", "category"]), Some("capabilities"));
+        assert_eq!(
+            suggest("capabilites", &["capabilities", "category"]),
+            Some("capabilities")
+        );
         assert_eq!(suggest("xyzzy", KEYS), None);
         // A short key must not attract a suggestion from every other short key.
         assert_eq!(suggest("qq", &["id", "name"]), None);

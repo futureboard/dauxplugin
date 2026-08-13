@@ -15,7 +15,10 @@ categories.workspace = true
 daux-abi = { workspace = true }
 daux-audio = { workspace = true }
 daux-bundle = { workspace = true }
+daux-core = { workspace = true }
 daux-events = { workspace = true }
+daux-host-services = { workspace = true }
+daux-parameter = { workspace = true }
 daux-transport = { workspace = true }
 libloading = { workspace = true }
 

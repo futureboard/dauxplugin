@@ -220,6 +220,9 @@ pub(crate) struct ParamsInput {
     state_schema_version: Option<Expr>,
     migrations: Option<Path>,
     fields: Vec<ParamField>,
+    /// `true` when every field of the struct is a parameter, which is the only case in
+    /// which a generated `new()` could name them all.
+    every_field_is_a_param: bool,
 }
 
 /// Entry point: parse, validate, then generate.
@@ -255,6 +258,7 @@ pub(crate) fn parse(input: &DeriveInput) -> Result<ParamsInput> {
     };
 
     let mut fields = Vec::new();
+    let mut every_field_is_a_param = true;
     for field in &named.named {
         let ident = field
             .ident
@@ -269,13 +273,13 @@ pub(crate) fn parse(input: &DeriveInput) -> Result<ParamsInput> {
         )?;
 
         if !attrs.present || attrs.has("skip") {
+            every_field_is_a_param = false;
             if let Some(entry) = attrs.get("skip") {
                 entry.expect_flag(FIELD_CONTEXT)?;
-                if let Some(other) = attrs.first_of(&["id"]).or_else(|| {
-                    attrs
-                        .first_of(CONSTRUCTION_KEYS)
-                        .filter(|_| attrs.has("skip"))
-                }) {
+                if let Some(other) = attrs
+                    .first_of(&["id"])
+                    .or_else(|| attrs.first_of(CONSTRUCTION_KEYS))
+                {
                     return Err(Error::new(
                         other.span(),
                         format!(
@@ -308,6 +312,7 @@ pub(crate) fn parse(input: &DeriveInput) -> Result<ParamsInput> {
             None => None,
         },
         fields,
+        every_field_is_a_param,
     })
 }
 
@@ -477,7 +482,10 @@ fn parse_build(ident: &Ident, kind: ParamKind, attrs: &AttrSet) -> Result<Build>
                      `labels(\"Normal\", \"Inverted\")`",
                 ));
             };
-            Some((string_literal(off, "labels")?, string_literal(on, "labels")?))
+            Some((
+                string_literal(off, "labels")?,
+                string_literal(on, "labels")?,
+            ))
         }
         None => None,
     };
@@ -505,10 +513,13 @@ fn parse_build(ident: &Ident, kind: ParamKind, attrs: &AttrSet) -> Result<Build>
 /// Rejects keys that make no sense for this parameter type, with the reason.
 fn reject_inapplicable(kind: ParamKind, attrs: &AttrSet) -> Result<()> {
     match kind {
-        ParamKind::Float => Ok(()),
+        ParamKind::Float => attrs.reject("labels", "`labels` belongs to a BoolParam"),
         ParamKind::Int => {
             attrs.reject("curve", "an IntParam is always a stepped, linear range")?;
-            attrs.reject("smoothing", "an IntParam is not ramped; smooth its effect instead")?;
+            attrs.reject(
+                "smoothing",
+                "an IntParam is not ramped; smooth its effect instead",
+            )?;
             attrs.reject("decimals", "an IntParam prints whole numbers")?;
             attrs.reject("labels", "`labels` belongs to a BoolParam")
         }
@@ -528,7 +539,10 @@ fn reject_inapplicable(kind: ParamKind, attrs: &AttrSet) -> Result<()> {
             attrs.reject("labels", "`labels` belongs to a BoolParam")
         }
         ParamKind::Meter => {
-            attrs.reject("default", "a MeterParam is written by the processor, never reset")?;
+            attrs.reject(
+                "default",
+                "a MeterParam is written by the processor, never reset",
+            )?;
             attrs.reject("smoothing", "a MeterParam is not automated")?;
             attrs.reject("labels", "`labels` belongs to a BoolParam")
         }
@@ -604,16 +618,16 @@ fn check_range(kind: ParamKind, range: &RangeSpec) -> Result<()> {
     if min == max {
         return Err(Error::new_spanned(
             &range.max,
-            format!("range bounds must differ, but both are {min}\n  a range of one value \
-                     cannot be mapped to a knob"),
+            format!(
+                "range bounds must differ, but both are {min}\n  a range of one value \
+                     cannot be mapped to a knob"
+            ),
         ));
     }
     if min > max {
         return Err(Error::new_spanned(
             &range.max,
-            format!(
-                "range bounds are inverted: {min}..={max}\n  write the lower bound first"
-            ),
+            format!("range bounds are inverted: {min}..={max}\n  write the lower bound first"),
         ));
     }
     if matches!(range.curve, Curve::Logarithmic) && min <= 0.0 {
@@ -700,11 +714,7 @@ fn parse_smoothing(lit: &LitStr) -> Result<SmoothingSpec> {
     if trimmed == "none" {
         return Ok(SmoothingSpec::None);
     }
-    for (prefix, exponential) in [
-        ("linear(", false),
-        ("exp(", true),
-        ("exponential(", true),
-    ] {
+    for (prefix, exponential) in [("linear(", false), ("exp(", true), ("exponential(", true)] {
         if let Some(ms) = trimmed
             .strip_prefix(prefix)
             .and_then(|rest| rest.strip_suffix(')'))
@@ -763,10 +773,11 @@ fn check_unique_ids(struct_ident: &Ident, fields: &[ParamField]) -> Result<()> {
     for (index, field) in fields.iter().enumerate() {
         for earlier in &fields[..index] {
             let clash = match (&field.id, &earlier.id) {
-                (
-                    ParamIdSpec::Literal { value: a, .. },
-                    ParamIdSpec::Literal { value: b, .. },
-                ) if a == b => Some(format!("id {a}")),
+                (ParamIdSpec::Literal { value: a, .. }, ParamIdSpec::Literal { value: b, .. })
+                    if a == b =>
+                {
+                    Some(format!("id {a}"))
+                }
                 (ParamIdSpec::Name(a), ParamIdSpec::Name(b)) if a.value() == b.value() => {
                     Some(format!("id \"{}\"", a.value()))
                 }
@@ -800,12 +811,12 @@ fn check_unique_ids(struct_ident: &Ident, fields: &[ParamField]) -> Result<()> {
 fn expand(input: &ParamsInput) -> TokenStream {
     let ParamsInput {
         ident,
-        vis,
         generics,
         krate,
         state_schema_version,
         migrations,
         fields,
+        ..
     } = input;
     let private = quote!(#krate::__private);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -856,20 +867,6 @@ fn expand(input: &ParamsInput) -> TokenStream {
         }
 
         #constructor
-    }
-    .tap_with_vis(vis)
-}
-
-/// A tiny helper so `expand` reads top-down; the visibility is only needed by the
-/// constructor, which is generated separately.
-trait TapWithVis {
-    /// Returns `self` unchanged; the visibility is already baked into the tokens.
-    fn tap_with_vis(self, vis: &Visibility) -> TokenStream;
-}
-
-impl TapWithVis for TokenStream {
-    fn tap_with_vis(self, _vis: &Visibility) -> TokenStream {
-        self
     }
 }
 
@@ -991,17 +988,25 @@ fn duplicate_id_guard(
     })
 }
 
-/// The inherent `new()`, generated only when every field can be built from its
-/// attributes.
+/// The inherent `new()`, generated only when every field of the struct is a parameter
+/// that can be built from its attributes.
+///
+/// A skipped field, an unannotated field or a field carrying only `id` means a generated
+/// `Self { .. }` would be missing an initialiser or a value the macro cannot invent, so
+/// the author writes `new()` themselves.
 fn constructor(input: &ParamsInput, private: &TokenStream) -> Option<TokenStream> {
     let ParamsInput {
         ident,
         vis,
         generics,
         fields,
+        every_field_is_a_param,
         ..
     } = input;
-    if fields.is_empty() || fields.iter().any(|field| field.build.is_none()) {
+    if !every_field_is_a_param || fields.is_empty() {
+        return None;
+    }
+    if fields.iter().any(|field| field.build.is_none()) {
         return None;
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
@@ -1058,10 +1063,7 @@ fn build_expr(private: &TokenStream, id: &ParamIdSpec, build: &Build) -> TokenSt
                 .as_ref()
                 .map_or_else(|| quote!(0), ToTokens::to_token_stream);
             let (min, max) = match build.range.as_ref() {
-                Some(range) => (
-                    range.min.to_token_stream(),
-                    range.max.to_token_stream(),
-                ),
+                Some(range) => (range.min.to_token_stream(), range.max.to_token_stream()),
                 None => (quote!(0), quote!(0)),
             };
             quote!(#private::IntParam::new(#id, #name, #default, #min, #max))
@@ -1218,7 +1220,9 @@ mod tests {
         let expanded = expand_str(GAIN);
         assert!(expanded.contains("fn new () -> Self"), "{expanded}");
         assert!(
-            expanded.contains("FloatParam :: new (:: daux_plugin :: __private :: ParamId :: new (1u32) , \"Gain\" , 0f64"),
+            // `default = 0.0` is already a float literal, so it is emitted unchanged;
+            // only integer literals are rewritten (see `attr::as_f64_expr`).
+            expanded.contains("FloatParam :: new (:: daux_plugin :: __private :: ParamId :: new (1u32) , \"Gain\" , 0.0 ,"),
             "{expanded}"
         );
         assert!(expanded.contains("with_unit (\"dB\")"), "{expanded}");
@@ -1270,6 +1274,31 @@ mod tests {
         assert!(!expanded.contains("cached"), "{expanded}");
         assert!(!expanded.contains("unannotated"), "{expanded}");
         assert!(!expanded.contains("fn new ()"), "{expanded}");
+    }
+
+    #[test]
+    fn one_unannotated_field_is_enough_to_suppress_the_constructor() {
+        // Regression: a generated `Self { gain: .. }` would be missing an initialiser for
+        // `cache`, so it must not be generated at all. The trait impl is unaffected.
+        let expanded = expand_str(
+            r#"
+            struct Bank {
+                #[param(id = 1, name = "Gain", range = 0.0..=1.0, default = 1.0)]
+                gain: FloatParam,
+                cache: Vec<f32>,
+            }
+            "#,
+        );
+        assert!(expanded.contains("fn param_refs"), "{expanded}");
+        assert!(expanded.contains("1u32 =>"), "{expanded}");
+        assert!(!expanded.contains("fn new ()"), "{expanded}");
+        assert!(!expanded.contains("cache"), "{expanded}");
+    }
+
+    #[test]
+    fn a_bare_param_attribute_explains_the_syntax() {
+        let message = error("struct Bank { #[param] gain: FloatParam }");
+        assert!(message.contains("needs arguments"), "{message}");
     }
 
     #[test]
@@ -1334,7 +1363,10 @@ mod tests {
             "{expanded}"
         );
         // Non-literal ids cannot be patterns, so the lookup compares against consts.
-        assert!(expanded.contains("const IDS : [u32 ; 2usize]"), "{expanded}");
+        assert!(
+            expanded.contains("const IDS : [u32 ; 2usize]"),
+            "{expanded}"
+        );
         assert!(expanded.contains("if raw == IDS [0]"), "{expanded}");
         // …and duplicates are caught by the compiler instead of the macro.
         assert!(expanded.contains("const _ : () ="), "{expanded}");
@@ -1352,8 +1384,9 @@ mod tests {
         let expanded = expand_str(
             r#"
             struct All {
-                #[param(id = 1, name = "Gain", range = -60.0..=12.0, default = 0.0, curve = "log")]
-                gain: FloatParam,
+                #[param(id = 1, name = "Cutoff", range = 20.0..=20000.0, default = 1000.0,
+                        curve = "log", unit = "Hz")]
+                cutoff: FloatParam,
                 #[param(id = 2, name = "Voices", range = 1..=16, default = 8, unit = "voices")]
                 voices: IntParam,
                 #[param(id = 3, name = "Invert", default = true, labels("Normal", "Inverted"))]
@@ -1423,7 +1456,9 @@ mod tests {
             "#,
         );
         assert!(
-            expanded.contains("impl < E : ParamEnum > :: daux_plugin :: __private :: Params for Bank < E >"),
+            expanded.contains(
+                "impl < E : ParamEnum > :: daux_plugin :: __private :: Params for Bank < E >"
+            ),
             "{expanded}"
         );
     }
@@ -1440,7 +1475,10 @@ mod tests {
             }
             "#,
         );
-        assert!(message.contains("field `gain` has no parameter id"), "{message}");
+        assert!(
+            message.contains("field `gain` has no parameter id"),
+            "{message}"
+        );
         assert!(message.contains("#[param(id = 1"), "{message}");
         assert!(message.contains("#[param(skip)]"), "{message}");
     }
@@ -1461,7 +1499,10 @@ mod tests {
             message.contains("duplicate parameter id 7 on `Bank`: field `gain` already uses it"),
             "{message}"
         );
-        assert!(message.contains("`gain` first uses this id here"), "{message}");
+        assert!(
+            message.contains("`gain` first uses this id here"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1476,7 +1517,10 @@ mod tests {
             }
             "#,
         );
-        assert!(message.contains("duplicate parameter id \"gain\""), "{message}");
+        assert!(
+            message.contains("duplicate parameter id \"gain\""),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1489,7 +1533,10 @@ mod tests {
             }
             ",
         );
-        assert!(message.contains("`id` must be a `u32` literal"), "{message}");
+        assert!(
+            message.contains("`id` must be a `u32` literal"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1646,7 +1693,10 @@ mod tests {
             }
             "#,
         );
-        assert!(message.contains("unknown parameter flag `automatible`"), "{message}");
+        assert!(
+            message.contains("unknown parameter flag `automatible`"),
+            "{message}"
+        );
         assert!(message.contains("did you mean `automatable`?"), "{message}");
     }
 
@@ -1673,7 +1723,28 @@ mod tests {
             }
             "#,
         );
-        assert!(message.contains("`default` does not apply here"), "{message}");
+        assert!(
+            message.contains("`default` does not apply here"),
+            "{message}"
+        );
+
+        // `labels` only exists on `BoolParam`; emitting `.with_labels(..)` on any other
+        // parameter type would be a type error in the author's crate, far from the cause.
+        for (ty, extra) in [
+            ("FloatParam", "range = 0.0..=1.0, default = 0.0, "),
+            ("IntParam", "range = 0..=1, default = 0, "),
+            ("EnumParam<Shape>", "default = Shape::Sine, "),
+            ("MeterParam", "range = 0.0..=1.0, "),
+        ] {
+            let source = format!(
+                r#"struct Bank {{ #[param(id = 1, name = "X", {extra}labels("a", "b"))] x: {ty} }}"#
+            );
+            let message = error(&source);
+            assert!(
+                message.contains("`labels` does not apply here"),
+                "`labels` on a {ty} must be rejected, got: {message}"
+            );
+        }
     }
 
     #[test]
@@ -1713,7 +1784,10 @@ mod tests {
             message.contains("cannot build `MyOwnParam` from attributes"),
             "{message}"
         );
-        assert!(message.contains("build it in your own `new()`"), "{message}");
+        assert!(
+            message.contains("build it in your own `new()`"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1726,7 +1800,10 @@ mod tests {
             }
             ",
         );
-        assert!(message.contains("cannot be combined with `skip`"), "{message}");
+        assert!(
+            message.contains("cannot be combined with `skip`"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1735,7 +1812,10 @@ mod tests {
         assert!(message.contains("needs named fields"), "{message}");
 
         let message = error("enum Bank { A }");
-        assert!(message.contains("needs a struct with named fields"), "{message}");
+        assert!(
+            message.contains("needs a struct with named fields"),
+            "{message}"
+        );
     }
 
     #[test]
