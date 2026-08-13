@@ -480,10 +480,9 @@ impl GraphicCapabilities {
     #[must_use]
     pub fn negotiate_with_fallback(&self, host: &HostGraphicCaps) -> Option<GraphicProfile> {
         self.negotiate(host).or_else(|| {
-            self.profiles()
-                .iter()
-                .copied()
-                .find(|p| p.is_fallback() && host.accepts(p.with_presentation(PresentationMode::FALLBACK)))
+            self.profiles().iter().copied().find(|p| {
+                p.is_fallback() && host.accepts(p.with_presentation(PresentationMode::FALLBACK))
+            })
         })
     }
 }
@@ -778,7 +777,8 @@ mod tests {
         assert_eq!(caps.negotiate(&sharing), Some(gpui_wgpu_shared()));
 
         // A host with no GPU at all falls back to software in a native window.
-        let cpu_only = HostGraphicCaps::in_process().with_renderers(GraphicRenderer::Software.into());
+        let cpu_only =
+            HostGraphicCaps::in_process().with_renderers(GraphicRenderer::Software.into());
         assert_eq!(caps.negotiate(&cpu_only), Some(egui_software_native()));
     }
 
@@ -824,23 +824,33 @@ mod tests {
                 .with_format(TextureFormat::Rgba8Unorm),
         );
         assert!(host.accepts(gpui_wgpu_shared()));
-        assert!(host.presentation().contains(PresentationMode::SharedTexture));
+        assert!(
+            host.presentation()
+                .contains(PresentationMode::SharedTexture)
+        );
         assert!(!host.shared_texture().is_empty());
     }
 
     #[test]
     fn declaring_empty_shared_texture_caps_does_not_enable_the_mode() {
         let host = HostGraphicCaps::in_process().with_shared_texture(SharedTextureCaps::none());
-        assert!(!host.presentation().contains(PresentationMode::SharedTexture));
+        assert!(
+            !host
+                .presentation()
+                .contains(PresentationMode::SharedTexture)
+        );
         assert!(!host.accepts(gpui_wgpu_shared()));
     }
 
     #[test]
     fn capability_summaries_report_each_axis() {
-        let caps: GraphicCapabilities =
-            [gpui_wgpu_shared(), egui_wgpu_embedded(), egui_software_native()]
-                .into_iter()
-                .collect();
+        let caps: GraphicCapabilities = [
+            gpui_wgpu_shared(),
+            egui_wgpu_embedded(),
+            egui_software_native(),
+        ]
+        .into_iter()
+        .collect();
         assert_eq!(
             caps.frameworks(),
             GraphicFrameworkSet::only(GraphicFramework::Gpui).with(GraphicFramework::Egui)
@@ -890,14 +900,23 @@ mod tests {
                 | PresentationModeSet::only(PresentationMode::NativeWindow),
             all
         );
-        assert_eq!(format!("{:?}", PresentationModeSet::only(PresentationMode::NativeWindow)), "{NativeWindow}");
+        assert_eq!(
+            format!(
+                "{:?}",
+                PresentationModeSet::only(PresentationMode::NativeWindow)
+            ),
+            "{NativeWindow}"
+        );
     }
 
     #[test]
     fn axis_names_are_stable_and_distinct() {
         assert_eq!(GraphicFramework::Egui.to_string(), "egui");
         assert_eq!(GraphicRenderer::OpenGl.to_string(), "opengl");
-        assert_eq!(PresentationMode::SharedTexture.to_string(), "shared-texture");
+        assert_eq!(
+            PresentationMode::SharedTexture.to_string(),
+            "shared-texture"
+        );
         assert!(GraphicRenderer::Wgpu.needs_gpu());
         assert!(!GraphicRenderer::Software.needs_gpu());
         assert!(PresentationMode::EmbeddedSurface.uses_window_handle());

@@ -208,11 +208,17 @@ mod tests {
 
     impl SpyHost {
         fn calls(&self) -> Vec<String> {
-            self.calls.lock().expect("no test panics while holding this").clone()
+            self.calls
+                .lock()
+                .expect("no test panics while holding this")
+                .clone()
         }
 
         fn push(&self, s: String) {
-            self.calls.lock().expect("no test panics while holding this").push(s);
+            self.calls
+                .lock()
+                .expect("no test panics while holding this")
+                .push(s);
         }
     }
 

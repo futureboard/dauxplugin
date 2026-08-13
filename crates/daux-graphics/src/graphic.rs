@@ -190,9 +190,7 @@ pub trait DauxGraphic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        GraphicFramework, GraphicRenderer, Key, LogicalSize, Modifiers, WindowApi,
-    };
+    use crate::{GraphicFramework, GraphicRenderer, Key, LogicalSize, Modifiers, WindowApi};
 
     fn profile() -> GraphicProfile {
         GraphicProfile::new(
@@ -320,6 +318,9 @@ mod tests {
         boxed.open(&mut ctx).unwrap();
         boxed.tick();
         boxed.close();
-        assert_eq!(boxed.descriptor().preferred_size, LogicalSize::new(400.0, 300.0));
+        assert_eq!(
+            boxed.descriptor().preferred_size,
+            LogicalSize::new(400.0, 300.0)
+        );
     }
 }

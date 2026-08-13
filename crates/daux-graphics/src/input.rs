@@ -418,10 +418,7 @@ mod tests {
     #[test]
     fn responses_default_to_ignored_and_combine_with_consumed_winning() {
         assert_eq!(InputResponse::default(), InputResponse::Ignored);
-        assert_eq!(
-            InputResponse::consumed_if(true),
-            InputResponse::Consumed
-        );
+        assert_eq!(InputResponse::consumed_if(true), InputResponse::Consumed);
         assert_eq!(
             InputResponse::Ignored.or(InputResponse::Consumed),
             InputResponse::Consumed

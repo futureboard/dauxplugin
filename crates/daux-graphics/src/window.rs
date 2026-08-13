@@ -485,16 +485,20 @@ mod tests {
             }
             .is_null()
         );
-        assert!(WindowTarget::X11 {
-            window: 0,
-            display: fake_ptr(1)
-        }
-        .is_null());
-        assert!(!WindowTarget::X11 {
-            window: 7,
-            display: core::ptr::null_mut()
-        }
-        .is_null());
+        assert!(
+            WindowTarget::X11 {
+                window: 0,
+                display: fake_ptr(1)
+            }
+            .is_null()
+        );
+        assert!(
+            !WindowTarget::X11 {
+                window: 7,
+                display: core::ptr::null_mut()
+            }
+            .is_null()
+        );
     }
 
     #[test]

@@ -52,7 +52,7 @@ impl ScaleFactor {
     /// ```
     #[must_use]
     pub fn new(value: f64) -> Option<Self> {
-        (value.is_finite() && value >= Self::MIN && value <= Self::MAX).then_some(Self(value))
+        (value.is_finite() && (Self::MIN..=Self::MAX).contains(&value)).then_some(Self(value))
     }
 
     /// `[any-thread]` Builds a scale factor, clamping instead of failing.
@@ -412,8 +412,14 @@ mod tests {
     #[test]
     fn scale_factors_reject_nonsense() {
         assert_eq!(ScaleFactor::new(1.0).map(ScaleFactor::get), Some(1.0));
-        assert_eq!(ScaleFactor::new(ScaleFactor::MIN).map(ScaleFactor::get), Some(ScaleFactor::MIN));
-        assert_eq!(ScaleFactor::new(ScaleFactor::MAX).map(ScaleFactor::get), Some(ScaleFactor::MAX));
+        assert_eq!(
+            ScaleFactor::new(ScaleFactor::MIN).map(ScaleFactor::get),
+            Some(ScaleFactor::MIN)
+        );
+        assert_eq!(
+            ScaleFactor::new(ScaleFactor::MAX).map(ScaleFactor::get),
+            Some(ScaleFactor::MAX)
+        );
         assert!(ScaleFactor::new(0.0).is_none());
         assert!(ScaleFactor::new(-1.0).is_none());
         assert!(ScaleFactor::new(f64::NAN).is_none());
@@ -426,7 +432,10 @@ mod tests {
     fn clamping_construction_never_fails() {
         assert_eq!(ScaleFactor::new_clamped(f64::NAN), ScaleFactor::ONE);
         assert_eq!(ScaleFactor::new_clamped(0.0).get(), ScaleFactor::MIN);
-        assert_eq!(ScaleFactor::new_clamped(f64::INFINITY).get(), ScaleFactor::MAX);
+        assert_eq!(
+            ScaleFactor::new_clamped(f64::INFINITY).get(),
+            ScaleFactor::MAX
+        );
         assert_eq!(ScaleFactor::new_clamped(-3.0).get(), ScaleFactor::MIN);
         assert_eq!(ScaleFactor::new_clamped(2.0).get(), 2.0);
         assert!(ScaleFactor::default().is_identity());
@@ -469,7 +478,10 @@ mod tests {
         assert!(!LogicalSize::new(f64::INFINITY, 10.0).is_usable());
         assert!(PhysicalSize::new(0, 10).is_empty());
         assert!(!PhysicalSize::new(1, 1).is_empty());
-        assert_eq!(PhysicalSize::new(u32::MAX, u32::MAX).area(), u64::from(u32::MAX) * u64::from(u32::MAX));
+        assert_eq!(
+            PhysicalSize::new(u32::MAX, u32::MAX).area(),
+            u64::from(u32::MAX) * u64::from(u32::MAX)
+        );
     }
 
     #[test]
@@ -532,13 +544,22 @@ mod tests {
         assert_eq!(moved, LogicalPoint::new(6.0, 12.5));
         assert!(LogicalVector::ZERO.is_zero());
         assert!(!LogicalVector::new(0.0, 1.0).is_zero());
-        assert_eq!(LogicalVector::new(2.0, 3.0).scaled(2.0), LogicalVector::new(4.0, 6.0));
-        assert_eq!(LogicalSize::square(4.0).scaled(0.5), LogicalSize::new(2.0, 2.0));
+        assert_eq!(
+            LogicalVector::new(2.0, 3.0).scaled(2.0),
+            LogicalVector::new(4.0, 6.0)
+        );
+        assert_eq!(
+            LogicalSize::square(4.0).scaled(0.5),
+            LogicalSize::new(2.0, 2.0)
+        );
     }
 
     #[test]
     fn display_is_unambiguous_about_units() {
-        assert_eq!(LogicalSize::new(400.0, 300.0).to_string(), "400x300 logical");
+        assert_eq!(
+            LogicalSize::new(400.0, 300.0).to_string(),
+            "400x300 logical"
+        );
         assert_eq!(PhysicalSize::new(800, 600).to_string(), "800x600 px");
         assert_eq!(ScaleFactor::new(1.5).expect("valid").to_string(), "1.5x");
     }

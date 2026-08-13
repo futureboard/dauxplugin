@@ -176,10 +176,7 @@ mod tests {
     #[test]
     fn owned_messages_survive_their_source() {
         let device = String::from("Adapter 7");
-        let err = GraphicError::new(
-            GraphicErrorKind::Renderer,
-            format!("device lost: {device}"),
-        );
+        let err = GraphicError::new(GraphicErrorKind::Renderer, format!("device lost: {device}"));
         drop(device);
         assert_eq!(err.message(), "device lost: Adapter 7");
         assert_eq!(err.kind(), GraphicErrorKind::Renderer);

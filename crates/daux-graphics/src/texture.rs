@@ -707,7 +707,10 @@ mod tests {
     fn a_half_filled_capability_set_counts_as_empty() {
         assert!(SharedTextureCaps::none().is_empty());
         let kinds_only = SharedTextureCaps::new().with_kind(SharedTextureKind::DmaBuf);
-        assert!(kinds_only.is_empty(), "a handle kind with no format agrees on nothing");
+        assert!(
+            kinds_only.is_empty(),
+            "a handle kind with no format agrees on nothing"
+        );
         let formats_only = SharedTextureCaps::new().with_format(TextureFormat::Rgba8Unorm);
         assert!(formats_only.is_empty());
         assert!(!d3d11_caps().is_empty());
