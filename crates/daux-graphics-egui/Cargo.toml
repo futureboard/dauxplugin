@@ -16,5 +16,11 @@ daux-graphics = { workspace = true }
 daux-parameter = { workspace = true }
 egui = { workspace = true }
 
+[dev-dependencies]
+# Tests need a `HostServices` to build a `GraphicContext`, and a `HostParams` spy to prove the
+# gesture bookkeeping is right. Neither is reachable from the crate's own public API, so this
+# stays a dev-dependency and does not widen the plug-in dependency graph.
+daux-host-services = { workspace = true }
+
 [lints]
 workspace = true

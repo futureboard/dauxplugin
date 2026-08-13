@@ -15,5 +15,10 @@ categories.workspace = true
 daux-graphics = { workspace = true }
 glow = { workspace = true }
 
+[dev-dependencies]
+# Tests need a `HostServices` to build a `GraphicContext` and drive an editor through its
+# lifecycle. Not reachable from this crate's own public API, so it stays a dev-dependency.
+daux-host-services = { workspace = true }
+
 [lints]
 workspace = true

@@ -354,10 +354,12 @@ mod tests {
             modifiers: Modifiers::NONE,
         });
         match events.as_slice() {
-            [HostEvent::Scroll {
-                delta: ScrollDelta::Pixels(d),
-                ..
-            }] => {
+            [
+                HostEvent::Scroll {
+                    delta: ScrollDelta::Pixels(d),
+                    ..
+                },
+            ] => {
                 assert!((f32::from(d.x) - -3.0).abs() < 1e-6);
                 assert!((f32::from(d.y) - 4.0).abs() < 1e-6);
             }

@@ -128,9 +128,9 @@ impl<V: Render + 'static> DauxGraphic for GpuiEditor<V> {
         let window = target.raw_window_handle().ok_or_else(|| {
             GraphicError::unsupported("the host window handle is not one GPUI can render into")
         })?;
-        let display = target.raw_display_handle().ok_or_else(|| {
-            GraphicError::unsupported("the host provided no display handle")
-        })?;
+        let display = target
+            .raw_display_handle()
+            .ok_or_else(|| GraphicError::unsupported("the host provided no display handle"))?;
 
         // SAFETY: `HostSurface::from_raw` requires the handles to name a live window that
         // outlives the surface. `GraphicContext` documents the host's window as valid from
