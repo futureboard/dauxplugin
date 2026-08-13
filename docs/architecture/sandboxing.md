@@ -89,8 +89,11 @@ When the runtime process dies:
 4. On restart, the runtime reloads the plug-in and replays the saved state. The user loses
    audio for a moment, not their session.
 
-`daux-ipc` models liveness and timeout policy as traits, so this logic is testable against
-the loopback transport without killing real processes.
+`daux-ipc` models liveness and timeout policy as plain data — a `LivenessPolicy` struct that
+reports through a `PeerHealth` enum — so this logic is testable against the loopback
+transport without killing real processes. It is deliberately not a trait: the policy is pure
+arithmetic over a `Duration` and owns no clock, so there is nothing for an implementor to
+substitute and a v-table would buy nothing.
 
 ## What ships in v1
 
@@ -100,7 +103,7 @@ the loopback transport without killing real processes.
 | Data-plane `#[repr(C)]` record layouts | Implemented, layout-asserted |
 | `LoopbackTransport` (in-process, backed by `daux-rt` queues) | Implemented, tested |
 | `ControlChannel` framing over any transport | Implemented |
-| Liveness / timeout policy traits | Implemented |
+| Liveness / timeout policy types (`LivenessPolicy`, `PeerHealth`) | Implemented |
 | Windows named pipes, Unix domain sockets, shared memory mapping | Declared, not implemented |
 | Editor transport (`ExternalWindow`) | Modelled, not implemented |
 | GPU resource sharing across processes | Modelled in the shared-texture extension |

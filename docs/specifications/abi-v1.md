@@ -889,11 +889,12 @@ pub struct DauxLatencyApiV1 {
 }
 
 pub const DAUX_TAIL_INFINITE: u32 = u32::MAX;
+pub const DAUX_TAIL_UNKNOWN:  u32 = u32::MAX - 1;
 
 #[repr(C)]
 pub struct DauxTailApiV1 {
     pub size: u32, pub _pad0: u32,
-    /// Samples of tail, or `DAUX_TAIL_INFINITE`. [any-thread]
+    /// Samples of tail, `DAUX_TAIL_INFINITE`, or `DAUX_TAIL_UNKNOWN`. [any-thread]
     pub get: unsafe extern "C" fn(p: DauxPluginHandle) -> u32,
     pub reserved: [usize; 2],
 }
@@ -907,6 +908,20 @@ pub struct DauxRenderApiV1 {
     pub reserved: [usize; 2],
 }
 ```
+
+The two tail sentinels are distinct and both mean "do not stop calling me", but they say
+different things and a host MAY treat them differently:
+
+* `DAUX_TAIL_INFINITE` — the plug-in knows its tail never ends (a drone, a self-oscillating
+  filter, an infinite reverb). A host offering "freeze the tail" has nothing to freeze.
+* `DAUX_TAIL_UNKNOWN` — the plug-in cannot say yet, and the answer may change. A host MUST
+  keep calling `process` until a later `get` returns something else.
+
+A host that does not distinguish them MUST treat `DAUX_TAIL_UNKNOWN` as
+`DAUX_TAIL_INFINITE`, never as a finite tail of 4 294 967 294 samples. A format adapter
+exporting to a format with only one sentinel (CLAP's `UINT32_MAX`, for instance) maps both
+onto it: erring towards keeping the plug-in alive cuts no audio, while erring the other way
+truncates a tail the plug-in was still producing.
 
 ### 11.6 Host-side extensions
 

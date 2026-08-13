@@ -177,6 +177,15 @@ pub struct AudioStorage<T: Sample> { pub fn new(channels: usize, frames: usize) 
 Zero-copy is mandatory: no method in this crate may allocate except `AudioStorage::new`
 and `BusLayout` construction.
 
+`BusLayout`'s fields are `pub`, but there is **no** `BusLayout::new(inputs, outputs)`. It is
+built from the named topologies plus the two adders:
+
+```rust
+impl BusLayout { pub fn effect() / stereo_effect() / mono_effect() / instrument() -> Self;
+                 pub fn with_input(self, bus: BusInfo) -> Self;
+                 pub fn with_output(self, bus: BusInfo) -> Self; }
+```
+
 ---
 
 ## `daux-midi`
@@ -301,6 +310,7 @@ pub trait Params: Send + Sync {
     fn param_refs(&self) -> Vec<(ParamId, &dyn Param)>;   // [main-thread], stable order
     fn param(&self, id: ParamId) -> Option<&dyn Param>;   // [any-thread]
     fn state_schema_version(&self) -> u32 { 1 }
+    fn migrations(&self) -> &[ParamMigration] { &[] }     // [main-thread]
 }
 
 pub enum Smoothing { None, Linear { ms: f32 }, Exponential { ms: f32 } }
@@ -318,6 +328,13 @@ pub struct ParamMigration { pub fn rename(old: ParamId, new: ParamId) -> Self;
 
 `FloatParam` and friends store their value in a `daux_rt::AtomicF32`/`AtomicF64` so that
 `&P` is `Sync` and the same `Arc<Params>` is shared by the processor, controller and editor.
+
+`param_refs` is the only required method. `param` has a default that walks `param_refs` —
+which **allocates**, so any `Params` reachable from the audio thread must override it.
+`#[derive(DauxParams)]` always emits an override that is a `match` on the raw id; a
+hand-written impl that forgets is a real-time bug the compiler will not catch.
+
+`migrations` is emitted by the derive only when `#[params(migrations = PATH)]` is written.
 
 ---
 
@@ -607,6 +624,64 @@ pub struct ParamBinding<'a> { pub fn new(param: &'a dyn Param, host: Option<&'a 
 `daux-graphics` must not depend on any GUI framework or GPU API. Backends implement
 `DauxGraphic` in their own crates.
 
+`DauxGraphic` is **neither `Send` nor `Sync`** — main-thread only. Every real toolkit
+(GPUI, egui) is `Rc`-based, so a `Send` bound ruled out every backend that could actually
+be written. `DauxPlugin::create_editor` therefore returns `Option<Box<dyn std::any::Any>>`
+with no `+ Send`.
+
+Two known gaps, both recorded rather than fixed:
+
+* `DauxGraphic::tick()` returns `()`, so a frame-time failure (lost device, unacquirable
+  surface) has nowhere to go. Both shipped editors work around it with an inherent
+  `take_paint_error()` / `take_present_error()` a host has to know to call. A
+  `fn last_error(&mut self) -> Option<GraphicError>`, or a `tick` returning
+  `DauxGraphicResult<()>`, would make this uniform.
+* `ParamBinding<'a>` borrows both halves, while every editor's UI callback is `'static`, so
+  a binding can only be built inside one frame and dies at its end. A drag that spans frames
+  therefore records `begin` in frame 1 and `end` in frame *n* against *different* bindings:
+  the intermediate frames send `HostParams::changed` outside any gesture, and the final
+  `end_gesture()` is a no-op. The safety property (begins == ends, no latched lane) holds,
+  because `Drop` closes an open gesture; the automation property does not. Fixing it needs
+  externally owned gesture state — `ParamBinding::with_gesture_cell(param, host, &Cell<bool>)`,
+  or an owned `ParamHandle { param: Arc<dyn Param>, host: Option<Arc<dyn HostParams>>,
+  gesturing: Cell<bool> }` an editor stores for its whole life.
+
+---
+
+## `daux-graphics-egui`, `-wgpu`, `-gl`, `-gpui`
+
+Optional backends. Workspace members but **not** default members: `cargo build` and
+`cargo test` must stay fast and must never require a GPU.
+
+```rust
+// daux-graphics-egui
+EguiEditor<P>, EguiPainter (profile/open/resize/paint/close), HeadlessPainter,
+InputTranslator, fn profile(GraphicRenderer) -> GraphicProfile,
+widgets::{ParamKnob, ParamSlider, ParamToggle, ParamValueEdit,
+          param_knob, param_slider, param_toggle, param_value_edit},
+input_map::{button, filter_text, key, modifiers, pos, scroll_delta},
+pub use egui;
+
+// daux-graphics-wgpu
+SurfaceConfig, Vsync, FormatPreference, AlphaPreference, fn profile(PresentationMode),
+fn capabilities(), GpuContext, WgpuRenderer, Frame,
+fn surface_target, fn choose_format, fn choose_present_mode, fn choose_alpha_mode,
+pub use wgpu;
+
+// daux-graphics-gl
+GlVersion, Viewport, Scaling, SoftwareFramebuffer, BYTES_PER_PIXEL, MAX_PIXELS,
+Presenter, NullPresenter, GlSurface, GlPresenter, GlBlitter, fn shader_source,
+SoftwareEditor, FrameInfo, fn profile(GraphicRenderer), pub use glow;
+
+// daux-graphics-gpui
+GpuiEditor, profile, input, pub use gpui, pub use gpui_embedded;
+```
+
+GPUI comes from the `futureboard/gpui-se` fork rather than crates.io, for
+`gpui_embedded` — a GPUI platform that creates no windows and owns no event loop, which is
+the only shape that works in a plug-in. Upstream `gpui` assumes GPUI *is* the application
+and calls `exit`, which a DAW will not survive.
+
 ---
 
 ## `daux-bundle`
@@ -627,10 +702,15 @@ pub struct Manifest { pub format: String, pub format_version: u32, pub abi_versi
 pub struct ManifestPlugin { pub id, name, vendor, version, description: String }
 
 /// Layout-independent view produced from manifest.json *or* Info.plist.
+/// `#[non_exhaustive]`, and `from_manifest(&Manifest)` is its only public constructor —
+/// downstream code cannot rebuild one from stored fields, which is why `daux-scan`'s cache
+/// stores descriptors rather than whole entries.
 pub struct BundleMetadata { pub id: String, pub name: String, pub vendor: String,
-    pub version: String, pub description: String, pub format_version: u32,
-    pub abi_version: u32, pub targets: Vec<TargetId>, pub capabilities: ManifestCaps,
-    pub graphics: Option<ManifestGraphics> }
+    pub version: String, pub description: String, pub category: Option<Category>,
+    pub format_version: u32, pub abi_version: u32, pub abi_version_minor: u32,
+    pub targets: Vec<TargetId>, pub capabilities: ManifestCaps,
+    pub graphics: Option<ManifestGraphics>,
+    pub resource_dir_name: String, pub library_dir_name: String }
 
 pub struct Bundle { pub fn open(path: &Path) -> BundleResult<Self>;
     pub fn path(&self) -> &Path; pub fn layout(&self) -> BundleLayout;
@@ -665,6 +745,26 @@ pub struct BundleError { .. }   pub type BundleResult<T> = Result<T, BundleError
 Hostile input is expected: bound every allocation from parsed metadata (reject manifests
 over 4 MiB, strings over 4 KiB, more than 256 targets), never panic on malformed data.
 
+Known gaps, recorded rather than fixed:
+
+* `BundleBuilder` cannot express most of what `manifest-v1` §5.4 requires `daux build` to
+  emit — there is no setter for `plugin.category`, `url`, `supportUrl`, `copyright`,
+  `license`, `features`, `versionString`, `dependencies`, `plugins`, `resources.dir` /
+  `libraryDir`, `stateSchemaVersion` or `generator`. `crates/daux-cli/src/pack.rs` therefore
+  builds the bundle, overwrites `{layout.manifest_path()}` with a fully populated `Manifest`,
+  and re-opens with `Bundle::open` to prove the result is readable. A
+  `BundleBuilder::manifest(Manifest)` would let the builder write the whole document itself.
+* `BundleBuilder::info_plist()` hand-writes a minimal Apple plist with a nested `DAUxPlugin`
+  dict and `capabilities` as an integer. `manifest-v1` §6.2 requires flat `DAUxFormatVersion`,
+  `DAUxAbiVersion`, `DAUxPluginType`, `DAUxVendor`, `DAUxEntrypoint`, `DAUxTargets` (array),
+  `DAUxCapabilities` (dict of booleans), plus `CFBundleDisplayName`, `CFBundleVersion`,
+  `CFBundleInfoDictionaryVersion`, `CFBundleSupportedPlatforms` and `LSMinimumSystemVersion`.
+  `daux build` deliberately does not rewrite the plist: it is `daux-bundle`'s to own.
+* `ValidationIssue::code` is `&'static str`, so issues cannot round-trip through a persistent
+  store without interning against a fixed table. `daux-scan` recomputes them on every scan
+  instead of caching them. `daux validate --json` or a cached verdict would need a
+  `Cow<'static, str>` or a small enum.
+
 ---
 
 ## `daux-protocol` / `daux-ipc`
@@ -676,10 +776,32 @@ sized for shared memory. Encoding is explicit little-endian, never `serde`, neve
 
 `daux-ipc`: `trait ControlTransport { fn send(&mut self, frame: &[u8]) -> IpcResult<()>;
 fn recv(&mut self, buf: &mut Vec<u8>) -> IpcResult<usize>; }`, a
-`trait DataPlane { fn audio_regions(&self) -> …; }`, an in-process `LoopbackTransport`
-implementation for tests, and `SharedRegion` describing a mapped audio buffer. Platform
-transports (named pipes, unix sockets, shared memory) are behind `cfg` and MAY be
-unimplemented in v1 as long as the traits and the loopback path are real.
+`trait DataPlane { fn audio_regions(&self) -> …; fn owns(..); fn acquire(..);
+fn publish(..); }`, an in-process `LoopbackTransport` implementation for tests, and
+`SharedRegion` describing a mapped audio buffer. Platform transports (named pipes, unix
+sockets, shared memory) are behind `cfg` and MAY be unimplemented in v1 as long as the
+traits and the loopback path are real.
+
+The shipped surface is a superset of the four names above, and all of it is public API:
+
+```rust
+pub struct ControlChannel<T: ControlTransport> { .. }  // framing over any transport
+pub enum RegionRole { .. }                             // what a SharedRegion carries
+pub trait DataPlaneEndpoint { .. }                     pub struct LoopbackDataPlane { .. }
+pub struct LivenessPolicy { .. }                       pub enum PeerHealth { .. }
+pub struct IpcError { .. }  pub enum IpcErrorKind { .. }  pub type IpcResult<T> = ..;
+pub fn is_would_block(error: &IpcError) -> bool;
+pub mod platform { pub mod windows; pub mod unix; pub mod shared_memory; }
+```
+
+`DataPlane`'s `owns`/`acquire`/`publish` are load-bearing rather than convenience:
+`daux-protocol`'s `AudioBlockHeader` documentation points at them for the sequence and
+ownership handshake, so a second implementation of `DataPlane` has to honour them.
+
+`LivenessPolicy` is a **struct**, not a trait, and reports through a `PeerHealth` enum. The
+policy is pure arithmetic over a `Duration` with no clock of its own, so a trait would have
+added a v-table and no substitutability. `docs/architecture/sandboxing.md`'s v1 table should
+read "types" rather than "traits" for this row.
 
 ---
 
@@ -701,7 +823,24 @@ pub struct SingleFactory<P: DauxPlugin + Default> { .. }
 pub struct PluginRegistry { pub fn new() -> Self;
     pub fn register<P: DauxPlugin + Default>(&mut self) -> &mut Self; }
 impl DauxFactory for PluginRegistry { .. }
+
+/// The same names generated code uses, for workspace crates that cannot depend on the
+/// facade. `#[params(crate = ::daux_plugin_api)]` / `#[plugin(crate = ..)]` /
+/// `#[state(crate = ..)]` redirect the derives here, so this module must carry the *whole*
+/// set `daux_plugin::__private` does, not just the parameter names.
+#[doc(hidden)] pub mod __private { /* the 22 items listed under `daux-plugin` below */ }
 ```
+
+`PluginRegistry::try_register` calls `PluginDescriptor::validate()` at registration.
+`PluginDescriptor` is `#[non_exhaustive]` but its fields are `pub`, so a plug-in can mutate
+a builder-validated descriptor into an invalid one before returning it from
+`DauxPlugin::descriptor()`; each format adapter is expected to validate before publishing
+one, and the registry is the shared line of defence.
+
+`PluginInstance::process` silences the output buses when it refuses a call, which writes
+`ctx.frames()` samples into host memory. That is only sound if the caller has already
+checked the frame count against the activation — so every adapter rejects
+`frame_count > max_block_size` itself, before building any buffer view.
 
 ## `daux-plugin-macros`
 
@@ -722,12 +861,54 @@ crate only ever depends on `daux-plugin`.
 The facade. `pub use daux_plugin_api::*;` plus:
 
 ```rust
+#[cfg(feature = "derive")] pub use daux_plugin_macros::{DauxParams, DauxPlugin, DauxState};
+
 pub mod prelude { pub use daux_plugin_api::prelude::*;
+                  pub use crate::export_plugin;
                   #[cfg(feature = "derive")] pub use daux_plugin_macros::*; }
+
+pub mod formats { #[cfg(feature = "axt")]  pub use daux_format_axt as axt;
+                  #[cfg(feature = "vst3")] pub use daux_format_vst3 as vst3;
+                  #[cfg(feature = "clap")] pub use daux_format_clap as clap; }
+
+#[cfg(feature = "gui")]
+pub mod graphics { pub use daux_plugin_api::daux_graphics::*;
+                   #[cfg(feature = "egui")]   pub use daux_graphics_egui as egui;
+                   #[cfg(feature = "gpui")]   pub use daux_graphics_gpui as gpui;
+                   #[cfg(feature = "wgpu")]   pub use daux_graphics_wgpu as wgpu;
+                   #[cfg(feature = "opengl")] pub use daux_graphics_gl   as opengl; }
+
+#[cfg(feature = "dsp")] pub use daux_dsp as dsp;
+
+/// The formats `export_plugin!` emits an entry point for in this build, in export order.
+pub const FORMATS: &[&str];
+
 /// Emits every enabled format entry point for a factory type.
 #[macro_export] macro_rules! export_plugin { ($factory:ty) => { /* cfg-gated per format */ } }
 pub mod __private { /* re-exports used by generated code */ }
 ```
+
+`__private` is fixed by what the derives and the adapters' `export_entry!` macros *emit* —
+it is not a design choice made here. Generated code names exactly these 22 items and nothing
+else, so removing one breaks every derive expansion in every downstream crate:
+
+| From | Items |
+|---|---|
+| `daux_parameter` | `Param`, `Params`, `ParamId`, `ParamFlags`, `ParamRange`, `ParamMigration`, `Smoothing`, `FloatParam`, `IntParam`, `BoolParam`, `EnumParam`, `MeterParam`, `ParamEnum` |
+| `daux_core` | `PluginDescriptor`, `Version`, `Category`, `Capabilities` |
+| `daux_audio` | `SampleFormats` |
+| `daux_state` | `StateWriter`, `StateReader`, `StateResult`, `StateError`, `StateVersion` |
+
+(`ParamEnum` is not emitted by any macro; it is there because authors need it and it belongs
+beside its siblings.) `daux-plugin-api::__private` carries the identical set, because
+`#[params(crate = ::daux_plugin_api)]` and its `plugin`/`state` siblings redirect generated
+code there for workspace crates that cannot depend on the facade.
+
+Each backend re-export nests the upstream toolkit under its own name — so an editor writes
+`daux_plugin::graphics::egui::egui::Ui` and `daux_plugin::graphics::gpui::gpui::Window`.
+That is deliberate (each backend re-exports the toolkit it was built against, so the two
+versions cannot drift), and an alias line at the top of an editor module is the idiom:
+`use daux_plugin::graphics::egui::egui;`.
 
 ---
 
@@ -761,9 +942,54 @@ pub struct LoadedPlugin { pub fn activate(&mut self, config: &ProcessConfig) -> 
     pub fn start_processing / stop_processing / reset / deactivate;
     pub fn process(&mut self, block: &mut HostBlock<'_>) -> ProcessStatus;
     pub fn params(&self) -> Option<ParamsExt<'_>>; pub fn state(&self) -> Option<StateExt<'_>>;
-    pub fn gui(&self) -> Option<GuiExt<'_>>; pub fn latency(&self) -> u32; }
+    pub fn gui(&self) -> Option<GuiExt<'_>>; pub fn latency(&self) -> u32;
+    pub fn lifecycle(&self) -> PluginState; }
 pub struct HostBridge { /* builds DauxHostV1 from Rust host-service impls */ }
 ```
+
+Two names differ from the sketch above, and the code is right: the block-readiness check is
+`HostBlock::check()`, and the lifecycle accessor on `LoadedPlugin` is `lifecycle()`, because
+`state()` is taken by the contract-specified `state() -> Option<StateExt<'_>>`.
+
+The full shipped surface:
+
+```rust
+AxtModule   { load, open, entry, abi_version, path, sdk_name, sdk_version,
+              has_dependency_directory }
+LoadedFactory (Clone) { create, module, host, plugin_count, descriptor, descriptors,
+              create_plugin, extension }
+LoadedPlugin { activate, deactivate, start_processing, stop_processing, reset, process,
+              on_main_thread, latency, tail, params, state, gui, extension, lifecycle,
+              config, is_poisoned, module }
+pub enum PluginState { Inactive, Active, Processing }
+HostBridge  { new, services, as_raw, extension }
+HostBlock   { new, with_event_capacity, set_frames, frames, max_frames, steady_time,
+              set_steady_time, set_transport, bind_input, bind_output, bind_input_raw,
+              bind_output_raw, set_input_constant_mask, set_output_constant_mask,
+              unbind_all, input_events(_mut), output_events(_mut),
+              take_input_events, set_input_events, check,
+              input_bus_count, output_bus_count, input_channel_count, output_channel_count }
+EventList + EventListFull + MAX_EVENT_BYTES / MAX_SYSEX_BYTES / MAX_STATE_BYTES
+ParamsExt / StateExt / GuiExt
+RuntimeError / RuntimeErrorKind / RuntimeResult
+```
+
+`HostBlock::take_input_events` / `set_input_events` exist because a block is built for one
+bus topology: a host that changes topology replaces the whole `HostBlock`, and the events
+already queued for the next `process` live in the old one. A host that simply dropped them
+silently discards accepted automation — see the regression covered by
+`tests/harness/tests/end_to_end.rs`.
+
+`daux-runtime`'s manifest carries `daux-core`, `daux-host-services` and `daux-parameter` in
+addition to the original five: the contract's own block requires `PluginDescriptor`,
+`ProcessConfig`/`ProcessStatus`, a `HostBridge` built from Rust host-service impls, and
+`ParamInfo` for `ParamsExt`. All were already in `[workspace.dependencies]` and none creates
+a cycle.
+
+There is no safe handle for the `daux.audio-ports/1` extension yet (`ext.rs` models
+params/state/gui/latency/tail only), so a host cannot ask a loaded instance for its bus
+topology. `daux-host` infers it from the `AudioStorage` the caller hands to `process` and
+rebuilds its `HostBlock` when that changes. An `AudioPortsExt` would remove the guesswork.
 
 The module keeps the `libloading::Library` alive inside an `Arc` that every derived object
 holds, so unloading before the last handle is dropped is impossible by construction.
@@ -796,4 +1022,32 @@ pub struct TestHost { pub fn new(config: ProcessConfig) -> Self;
 
 `daux build` reads one source of truth: `[package.metadata.daux]` in the plug-in's
 `Cargo.toml` (see `docs/specifications/manifest-v1.md` §2). It generates `manifest.json`
-and `Info.plist`; the developer never writes them by hand.
+and `Info.plist`; the developer never writes them by hand. A plug-in crate without that
+table is refused with `DAUX-M200`, and `version` must be set there whenever `[package]
+version` is workspace-inherited — the reader deliberately does not resolve inheritance.
+
+The three adapters report incompatibilities in three different shapes — axt is
+`{code, field, message}`, vst3 `{level, code, message, advice}`, clap
+`{code, severity, message}` — and `crates/daux-cli/src/formats.rs` normalises all three onto
+`daux_bundle::Severity` so one build log is readable. AXT carries no severity of its own, so
+the CLI infers it from the code, which is a rule living in the wrong crate; giving AXT an
+explicit severity would move it back where it belongs.
+
+---
+
+## `tests/harness`
+
+The suites no single crate can write, because each spans a boundary a crate cannot see
+across. `daux-tests` depends on `daux-example-gain` so that cargo builds a real `cdylib`
+exporting `daux_plugin_entry_v1` before the tests run — nothing else in the workspace
+produces a loadable module, and a synthetic fixture can only ever exercise the paths where
+loading *fails*.
+
+| Suite | What only this crate can check |
+|---|---|
+| `end_to_end` | build → `BundleBuilder` → `Bundle::open` → `AxtModule` → factory → instance → `process`, with the gain asserted numerically. Also the scanner's *successful* probe path. |
+| `cross_crate_constants` | that `daux-core`'s hand-transcribed `Category`, `Tail`, `ProcessStatus`, `ProcessMode` and `Capabilities` numbering matches `daux-abi`'s, which the zero-dependency rule stops either crate from checking |
+| `derive_output` | that what `daux-plugin-macros` emits actually *compiles* against the real crates, including the `#[params(crate = ::daux_plugin_api)]` redirect. A proc-macro crate cannot depend on the facade, so it can never compile its own output. |
+
+`src/` carries the shared fixtures: `temp`, `bundles` (well-formed and hostile `.axt`
+trees), `fakehost`, `signal`, `plugins`, `rig`, `assertions`.
