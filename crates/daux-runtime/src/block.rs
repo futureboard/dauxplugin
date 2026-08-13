@@ -348,6 +348,33 @@ impl<'a> HostBlock<'a> {
         &mut self.output_events
     }
 
+    /// Moves the queued input events out of this block. [main-thread]
+    ///
+    /// A block is built for one bus topology, so a host that has to change topology — a
+    /// track goes from mono to stereo, a side-chain is connected — replaces the whole
+    /// `HostBlock`. Anything already queued for the next `process` lives in the old block,
+    /// and a host that simply dropped it would silently discard the parameter changes and
+    /// notes it had accepted. Pair this with [`set_input_events`](HostBlock::set_input_events)
+    /// on the replacement to carry the queue across.
+    ///
+    /// The list left behind is empty and holds no storage, so this block can no longer be
+    /// queued into until a new one is installed. It allocates nothing.
+    #[must_use = "the queue is removed from the block; install it somewhere or it is lost"]
+    pub fn take_input_events(&mut self) -> EventList {
+        // `with_capacity(0, 0)` allocates nothing: both a zero-length `vec![]` and a
+        // zero-capacity `Vec` are dangling by construction.
+        core::mem::replace(&mut self.input_events, EventList::with_capacity(0, 0))
+    }
+
+    /// Installs `events` as the queue the plug-in will see. [main-thread]
+    ///
+    /// The counterpart of [`take_input_events`](HostBlock::take_input_events). The list
+    /// replaced is returned so a caller can keep whichever of the two has the capacity it
+    /// wants; dropping it is fine and frees its arena.
+    pub fn set_input_events(&mut self, events: EventList) -> EventList {
+        core::mem::replace(&mut self.input_events, events)
+    }
+
     /// Checks the block describes a call a plug-in may actually be given. [audio-thread]
     ///
     /// # Errors
@@ -735,6 +762,75 @@ mod tests {
         let produced = block.output_events().note(0).expect("a note event");
         assert_eq!(produced.key, 64);
         assert_eq!(produced.header.time, 3);
+    }
+
+    /// A host that changes bus topology replaces the whole block, and everything already
+    /// queued for the next `process` has to survive the swap.
+    ///
+    /// This is a real regression: `daux-host` reshapes its block on the first `process`,
+    /// because it only learns the channel counts when the caller hands it storage. Losing the
+    /// queue there made every `set_param` and `send_note_on` on a loaded `.axt` a no-op, with
+    /// no error anywhere — the plug-in simply ran at its default value.
+    #[test]
+    fn queued_input_events_survive_a_topology_change() {
+        let mut mono = HostBlock::new(&[1], &[1], 8);
+        let mut param = daux_abi::DauxEventParamV1::new();
+        param.param_id = 7;
+        param.value = -6.0;
+        param.header.time = 3;
+        mono.input_events_mut().push_param(&param).unwrap();
+        let mut note = daux_abi::DauxEventNoteV1::new();
+        note.header.time = 1;
+        note.key = 69;
+        mono.input_events_mut().push_note(&note).unwrap();
+        assert_eq!(mono.input_events().len(), 2);
+
+        // The host discovers it is actually stereo and rebuilds.
+        let pending = mono.take_input_events();
+        assert!(
+            mono.input_events().is_empty(),
+            "the queue is moved out, not copied"
+        );
+        let mut stereo = HostBlock::new(&[2], &[2], 8);
+        let displaced = stereo.set_input_events(pending);
+        assert!(
+            displaced.is_empty(),
+            "the list handed back is the new block's own, which nothing queued into"
+        );
+
+        assert_eq!(stereo.input_events().len(), 2);
+        let carried_param = stereo.input_events().param(0).expect("the parameter event");
+        assert_eq!(carried_param.param_id, 7);
+        assert_eq!(carried_param.value, -6.0);
+        assert_eq!(carried_param.header.time, 3);
+        let carried_note = stereo.input_events().note(1).expect("the note event");
+        assert_eq!(carried_note.key, 69);
+        assert_eq!(carried_note.header.time, 1);
+
+        // And the carried queue is still usable: it kept its arena, so the host can go on
+        // pushing into the new block rather than having to rebuild the queue too.
+        let mut second = daux_abi::DauxEventParamV1::new();
+        second.param_id = 8;
+        second.header.time = 5;
+        stereo.input_events_mut().push_param(&second).unwrap();
+        assert_eq!(stereo.input_events().len(), 3);
+    }
+
+    /// The emptied list left behind must be a usable `EventList`, not a poisoned one: a host
+    /// that takes the queue and then never installs a new one must get a clean refusal rather
+    /// than a panic on the next push.
+    #[test]
+    fn a_block_whose_queue_was_taken_refuses_pushes_instead_of_panicking() {
+        let mut block = HostBlock::new(&[1], &[1], 8);
+        let _ = block.take_input_events();
+        assert_eq!(block.input_events().capacity(), 0);
+        assert_eq!(block.input_events().byte_capacity(), 0);
+        let note = daux_abi::DauxEventNoteV1::new();
+        assert!(
+            block.input_events_mut().push_note(&note).is_err(),
+            "a zero-capacity list is full, and reports it"
+        );
+        assert!(block.input_events().is_empty());
     }
 
     #[test]

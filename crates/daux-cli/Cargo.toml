@@ -1,6 +1,6 @@
 [package]
 name = "daux-cli"
-description = "The daux developer CLI: new, build, bundle, validate, inspect, scan."
+description = "The daux developer CLI: new, build, bundle, validate, inspect, scan, test, run."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,6 +18,9 @@ path = "src/main.rs"
 [dependencies]
 daux-abi = { workspace = true }
 daux-bundle = { workspace = true }
+daux-format-axt = { workspace = true }
+daux-format-clap = { workspace = true }
+daux-format-vst3 = { workspace = true }
 daux-host = { workspace = true }
 daux-runtime = { workspace = true }
 daux-scan = { workspace = true }
