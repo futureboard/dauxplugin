@@ -662,7 +662,12 @@ impl ManifestPlugin {
         check_text("plugin.name", &self.name, MAX_NAME_BYTES, false)?;
         check_text("plugin.vendor", &self.vendor, MAX_NAME_BYTES, false)?;
         validate_version(&self.version)?;
-        check_text("plugin.description", &self.description, MAX_TEXT_BYTES, true)?;
+        check_text(
+            "plugin.description",
+            &self.description,
+            MAX_TEXT_BYTES,
+            true,
+        )?;
         if let Some(version_string) = &self.version_string {
             check_text("plugin.versionString", version_string, MAX_NAME_BYTES, true)?;
         }
@@ -815,7 +820,10 @@ impl Manifest {
         if self.format != FORMAT_SENTINEL {
             return Err(BundleError::new(
                 BundleErrorKind::WrongFormat,
-                format!("`format` is `{}`, expected `{FORMAT_SENTINEL}`", self.format),
+                format!(
+                    "`format` is `{}`, expected `{FORMAT_SENTINEL}`",
+                    self.format
+                ),
             ));
         }
         if self.format_version != FORMAT_VERSION {
@@ -953,7 +961,10 @@ fn limit(detail: impl Into<String>) -> BundleError {
 }
 
 fn missing(field: &str) -> BundleError {
-    BundleError::new(BundleErrorKind::MissingField, format!("`{field}` is missing"))
+    BundleError::new(
+        BundleErrorKind::MissingField,
+        format!("`{field}` is missing"),
+    )
 }
 
 fn map_serde_error(err: serde_json::Error) -> BundleError {
@@ -1070,9 +1081,7 @@ pub fn validate_version(version: &str) -> BundleResult<[u32; 4]> {
             )));
         }
         if part.len() > 1 && part.starts_with('0') {
-            return Err(bad(format!(
-                "`{version}` has a leading zero in `{part}`"
-            )));
+            return Err(bad(format!("`{version}` has a leading zero in `{part}`")));
         }
         out[index] = part
             .parse::<u32>()
@@ -1121,7 +1130,9 @@ fn check_targets(targets: &[TargetId]) -> BundleResult<()> {
         return Err(invalid("`targets` is empty"));
     }
     if targets.len() > MAX_TARGETS {
-        return Err(limit(format!("more than {MAX_TARGETS} entries in `targets`")));
+        return Err(limit(format!(
+            "more than {MAX_TARGETS} entries in `targets`"
+        )));
     }
     for (index, target) in targets.iter().enumerate() {
         if targets[..index].contains(target) {
@@ -1242,7 +1253,14 @@ mod tests {
         for good in ["com.example.gain", "org.a.b.c", "io.x.y2"] {
             validate_plugin_id(good).unwrap_or_else(|e| panic!("`{good}`: {e}"));
         }
-        for bad in ["", "nodots", "com..gain", ".com.gain", "com.gain.", "com gain"] {
+        for bad in [
+            "",
+            "nodots",
+            "com..gain",
+            ".com.gain",
+            "com.gain.",
+            "com gain",
+        ] {
             assert!(validate_plugin_id(bad).is_err(), "`{bad}` must be refused");
         }
     }

@@ -48,8 +48,7 @@ const WINDOWS_X86_64_TRIPLES: &[&str] = &[
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-gnullvm",
 ];
-const WINDOWS_AARCH64_TRIPLES: &[&str] =
-    &["aarch64-pc-windows-msvc", "aarch64-pc-windows-gnullvm"];
+const WINDOWS_AARCH64_TRIPLES: &[&str] = &["aarch64-pc-windows-msvc", "aarch64-pc-windows-gnullvm"];
 const LINUX_X86_64_TRIPLES: &[&str] = &["x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl"];
 const LINUX_AARCH64_TRIPLES: &[&str] = &["aarch64-unknown-linux-gnu", "aarch64-unknown-linux-musl"];
 const MACOS_X86_64_TRIPLES: &[&str] = &["x86_64-apple-darwin"];
@@ -219,12 +218,10 @@ impl TargetId {
 }
 
 fn host_id() -> String {
-    let os = match std::env::consts::OS {
-        "windows" => "windows",
-        "linux" => "linux",
-        "macos" => "macos",
-        other => other,
-    };
+    // `axt-v1` §3.1 spells the three platforms exactly as `std::env::consts::OS` does, so
+    // this is a pass-through rather than a translation table. Anything else falls through to
+    // the syntax check below.
+    let os = std::env::consts::OS;
     let arch = match (os, std::env::consts::ARCH) {
         // Apple spells it `arm64`; ELF and Rust spell it `aarch64` (`axt-v1` §3.1).
         ("macos", "aarch64") => "arm64",
@@ -267,7 +264,10 @@ fn validate_syntax(s: &str) -> BundleResult<()> {
             "`{s}` does not start with a lower-case ASCII letter"
         )));
     }
-    if !os.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()) {
+    if !os
+        .bytes()
+        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+    {
         return Err(invalid(format!("`{s}` has an illegal character in the os")));
     }
     if !arch
@@ -317,7 +317,10 @@ impl<'de> Deserialize<'de> for TargetId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = String::deserialize(deserializer)?;
         Self::parse(&raw).map_err(|err| {
-            DeError::invalid_value(Unexpected::Str(&raw), &err.detail().unwrap_or("a target id"))
+            DeError::invalid_value(
+                Unexpected::Str(&raw),
+                &err.detail().unwrap_or("a target id"),
+            )
         })
     }
 }
@@ -338,13 +341,28 @@ mod tests {
 
     #[test]
     fn dylib_extension_matches_axt_v1_section_3_2() {
-        assert_eq!(TargetId::parse(WINDOWS_X86_64).unwrap().dylib_extension(), "dll");
-        assert_eq!(TargetId::parse(WINDOWS_AARCH64).unwrap().dylib_extension(), "dll");
-        assert_eq!(TargetId::parse(LINUX_X86_64).unwrap().dylib_extension(), "so");
-        assert_eq!(TargetId::parse(LINUX_AARCH64).unwrap().dylib_extension(), "so");
+        assert_eq!(
+            TargetId::parse(WINDOWS_X86_64).unwrap().dylib_extension(),
+            "dll"
+        );
+        assert_eq!(
+            TargetId::parse(WINDOWS_AARCH64).unwrap().dylib_extension(),
+            "dll"
+        );
+        assert_eq!(
+            TargetId::parse(LINUX_X86_64).unwrap().dylib_extension(),
+            "so"
+        );
+        assert_eq!(
+            TargetId::parse(LINUX_AARCH64).unwrap().dylib_extension(),
+            "so"
+        );
         assert_eq!(TargetId::parse(MACOS_X86_64).unwrap().dylib_extension(), "");
         assert_eq!(TargetId::parse(MACOS_ARM64).unwrap().dylib_extension(), "");
-        assert_eq!(TargetId::parse(MACOS_UNIVERSAL).unwrap().dylib_extension(), "");
+        assert_eq!(
+            TargetId::parse(MACOS_UNIVERSAL).unwrap().dylib_extension(),
+            ""
+        );
     }
 
     #[test]
@@ -353,7 +371,9 @@ mod tests {
         assert_eq!(id.as_str(), MACOS_ARM64);
         assert!(id.is_known());
         assert_eq!(
-            TargetId::from_rust_triple("aarch64-apple-darwin").unwrap().as_str(),
+            TargetId::from_rust_triple("aarch64-apple-darwin")
+                .unwrap()
+                .as_str(),
             MACOS_ARM64
         );
     }
@@ -371,7 +391,9 @@ mod tests {
             }
         }
         assert_eq!(
-            TargetId::from_rust_triple("x86_64-unknown-linux-musl").unwrap().as_str(),
+            TargetId::from_rust_triple("x86_64-unknown-linux-musl")
+                .unwrap()
+                .as_str(),
             LINUX_X86_64
         );
         assert!(TargetId::from_rust_triple("wasm32-unknown-unknown").is_none());

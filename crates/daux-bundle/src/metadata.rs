@@ -3,8 +3,8 @@
 use std::path::Path;
 
 use crate::{
-    BundleError, BundleErrorKind, BundleLayout, BundleResult, MAX_METADATA_BYTES, Manifest,
-    ManifestCaps, ManifestGraphics, TargetId, limits::FORMAT_VERSION,
+    BundleError, BundleErrorKind, BundleLayout, BundleResult, Category, MAX_METADATA_BYTES,
+    Manifest, ManifestCaps, ManifestGraphics, TargetId, limits::FORMAT_VERSION,
 };
 
 /// The reverse-DNS key DAUx metadata lives under in an `Info.plist`.
@@ -31,6 +31,13 @@ pub struct BundleMetadata {
     pub version: String,
     /// Long description. May be empty.
     pub description: String,
+    /// What kind of plug-in the manifest says this is, when it says at all.
+    ///
+    /// `None` means the manifest declared no category — which is different from declaring
+    /// `Category::Unknown`, and the difference matters: `manifest-v1` §8.1 row 5
+    /// (`DAUX-M104`) compares this against the category the binary's descriptor reports, and
+    /// a manifest that said nothing has nothing to disagree with.
+    pub category: Option<Category>,
     /// Bundle format version.
     pub format_version: u32,
     /// ABI major version the binaries were built against.
@@ -58,6 +65,7 @@ impl BundleMetadata {
             vendor: manifest.plugin.vendor.clone(),
             version: manifest.plugin.version.clone(),
             description: manifest.plugin.description.clone(),
+            category: manifest.plugin.category,
             format_version: manifest.format_version,
             abi_version: manifest.abi_version,
             abi_version_minor: manifest.abi_version_minor,
@@ -84,7 +92,8 @@ impl BundleMetadata {
         let manifest_path = root.join(layout.manifest_path());
         if manifest_path.is_file() {
             let bytes = read_bounded(&manifest_path)?;
-            let manifest = Manifest::from_json_bytes(&bytes).map_err(|e| e.or_path(&manifest_path))?;
+            let manifest =
+                Manifest::from_json_bytes(&bytes).map_err(|e| e.or_path(&manifest_path))?;
             return Ok(Self::from_manifest(&manifest));
         }
         match layout {
@@ -117,9 +126,8 @@ impl BundleMetadata {
             crate::xml_scan::prescan(text).map_err(|e| e.or_path(path))?;
         }
 
-        let value: plist::Value = plist::from_bytes(&bytes).map_err(|e| {
-            BundleError::new(BundleErrorKind::Parse, e.to_string()).with_path(path)
-        })?;
+        let value: plist::Value = plist::from_bytes(&bytes)
+            .map_err(|e| BundleError::new(BundleErrorKind::Parse, e.to_string()).with_path(path))?;
         let root = value.as_dictionary().ok_or_else(|| {
             BundleError::new(BundleErrorKind::Parse, "the plist root is not a dictionary")
                 .with_path(path)
@@ -177,9 +185,17 @@ impl BundleMetadata {
             vendor: string(daux, "vendor").unwrap_or_default(),
             version,
             description: string(daux, "description").unwrap_or_default(),
+            // `manifest-v1` §6.2 spells it `DAUxCategory` at the plist root; the nested
+            // `DAUxPlugin` dictionary carries a lower-case `category` alongside the other
+            // DAUx keys. An unrecognised slug becomes `None` rather than `Unknown`: a
+            // category this build cannot name is not the same as a bundle that declared none,
+            // and cross-checking against a guess would raise a false `DAUX-M104`.
+            category: string(daux, "category")
+                .or_else(|| string(Some(root), "DAUxCategory"))
+                .as_deref()
+                .and_then(Category::parse),
             format_version: integer(daux, "formatVersion").unwrap_or(FORMAT_VERSION),
-            abi_version: integer(daux, "abiVersion")
-                .unwrap_or(daux_abi::DAUX_ABI_VERSION_MAJOR),
+            abi_version: integer(daux, "abiVersion").unwrap_or(daux_abi::DAUX_ABI_VERSION_MAJOR),
             abi_version_minor: integer(daux, "abiVersionMinor").unwrap_or(0),
             targets,
             capabilities,

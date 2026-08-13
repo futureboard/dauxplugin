@@ -209,9 +209,10 @@ impl Bundle {
     ///
     /// A loader adds this to the dynamic linker's search path before opening the binary.
     pub fn library_dir(&self, target: &TargetId) -> Option<PathBuf> {
-        let dir = self
-            .path
-            .join(self.layout.library_dir(target, &self.metadata.library_dir_name));
+        let dir = self.path.join(
+            self.layout
+                .library_dir(target, &self.metadata.library_dir_name),
+        );
         dir.is_dir().then_some(dir)
     }
 
@@ -255,12 +256,7 @@ impl Bundle {
             }
         }
 
-        if !self
-            .metadata
-            .targets
-            .iter()
-            .any(|t| t == &TargetId::host())
-        {
+        if !self.metadata.targets.iter().any(|t| t == &TargetId::host()) {
             issues.push(ValidationIssue::info(
                 "not-loadable-here",
                 format!(
@@ -310,10 +306,7 @@ impl Bundle {
         let Ok(manifest) = crate::Manifest::from_json_bytes(&bytes) else {
             return Vec::new();
         };
-        manifest
-            .resources
-            .map(|r| r.required)
-            .unwrap_or_default()
+        manifest.resources.map(|r| r.required).unwrap_or_default()
     }
 }
 
@@ -513,7 +506,10 @@ mod tests {
         let bundle = Bundle::open(&root).unwrap();
         let resources = bundle.resources();
 
-        assert_eq!(resources.read_to_string("fonts/Inter.txt").unwrap(), "hello");
+        assert_eq!(
+            resources.read_to_string("fonts/Inter.txt").unwrap(),
+            "hello"
+        );
         assert!(resources.exists("fonts/Inter.txt"));
         assert!(!resources.exists("fonts/Missing.txt"));
 
@@ -529,7 +525,10 @@ mod tests {
                 BundleErrorKind::PathEscape,
                 "`{hostile}` must not escape"
             );
-            assert!(!resources.exists(hostile), "`{hostile}` must read as absent");
+            assert!(
+                !resources.exists(hostile),
+                "`{hostile}` must read as absent"
+            );
         }
     }
 

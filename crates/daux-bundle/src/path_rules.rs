@@ -78,7 +78,9 @@ pub fn validate_component(component: &str) -> BundleResult<()> {
             )));
         }
         if RESERVED_CHARS.contains(&ch) {
-            return Err(escape(format!("reserved character `{ch}` in `{component}`")));
+            return Err(escape(format!(
+                "reserved character `{ch}` in `{component}`"
+            )));
         }
     }
     if component.ends_with('.') || component.ends_with(' ') {
@@ -161,18 +163,18 @@ pub fn looks_absolute(value: &str) -> bool {
 pub fn resolve_within(root: &Path, logical: &str) -> BundleResult<PathBuf> {
     let components = validate_logical(logical)?;
 
-    let canonical_root = root.canonicalize().map_err(|err| {
-        BundleError::io(root, &err).or_path(root)
-    })?;
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|err| BundleError::io(root, &err).or_path(root))?;
 
     let mut joined = canonical_root.clone();
     for component in components {
         joined.push(component);
     }
 
-    let canonical = joined.canonicalize().map_err(|err| {
-        BundleError::io(&joined, &err)
-    })?;
+    let canonical = joined
+        .canonicalize()
+        .map_err(|err| BundleError::io(&joined, &err))?;
 
     if !canonical.starts_with(&canonical_root) {
         return Err(escape(format!(
@@ -182,8 +184,8 @@ pub fn resolve_within(root: &Path, logical: &str) -> BundleResult<PathBuf> {
         .with_path(&canonical));
     }
 
-    let meta = std::fs::symlink_metadata(&canonical)
-        .map_err(|err| BundleError::io(&canonical, &err))?;
+    let meta =
+        std::fs::symlink_metadata(&canonical).map_err(|err| BundleError::io(&canonical, &err))?;
     if !meta.file_type().is_file() {
         return Err(
             BundleError::new(BundleErrorKind::NotRegularFile, format!("`{logical}`"))
@@ -288,7 +290,9 @@ mod tests {
         let ok_component = "a".repeat(MAX_PATH_COMPONENT_BYTES);
         assert!(validate_logical(&ok_component).is_ok());
 
-        let deep = std::iter::repeat_n("ab", MAX_LOGICAL_PATH_BYTES).collect::<Vec<_>>().join("/");
+        let deep = std::iter::repeat_n("ab", MAX_LOGICAL_PATH_BYTES)
+            .collect::<Vec<_>>()
+            .join("/");
         assert!(deep.len() > MAX_LOGICAL_PATH_BYTES);
         assert!(validate_logical(&deep).is_err());
     }

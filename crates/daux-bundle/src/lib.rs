@@ -58,9 +58,9 @@ pub use limits::{
     MAX_STRING_BYTES, MAX_TARGETS,
 };
 pub use manifest::{
-    CAPABILITY_KEYS, Category, GraphicsFramework, GraphicsPresentation, GraphicsRenderer,
-    Manifest, ManifestCaps, ManifestGenerator, ManifestGraphics, ManifestPlugin,
-    ManifestPluginRef, ManifestResources, validate_plugin_id, validate_version,
+    CAPABILITY_KEYS, Category, GraphicsFramework, GraphicsPresentation, GraphicsRenderer, Manifest,
+    ManifestCaps, ManifestGenerator, ManifestGraphics, ManifestPlugin, ManifestPluginRef,
+    ManifestResources, validate_plugin_id, validate_version,
 };
 pub use metadata::BundleMetadata;
 pub use target::TargetId;

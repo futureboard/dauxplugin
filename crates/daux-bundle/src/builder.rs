@@ -105,9 +105,7 @@ impl BundleBuilder {
         self.layout.unwrap_or_else(|| {
             self.binaries
                 .first()
-                .map_or(BundleLayout::Posix, |(t, _)| {
-                    BundleLayout::preferred_for(t)
-                })
+                .map_or(BundleLayout::Posix, |(t, _)| BundleLayout::preferred_for(t))
         })
     }
 
@@ -188,9 +186,7 @@ impl BundleBuilder {
         }
 
         for (target, from) in &self.libraries {
-            let dir = staging.join(
-                layout.library_dir(target, self.manifest.library_dir_name()),
-            );
+            let dir = staging.join(layout.library_dir(target, self.manifest.library_dir_name()));
             std::fs::create_dir_all(&dir).map_err(|e| BundleError::io(&dir, &e))?;
             copy_into(from, &dir)?;
         }
@@ -290,9 +286,7 @@ fn copy_tree(from: &Path, to: &Path) -> BundleResult<()> {
     for entry in entries {
         let entry = entry.map_err(|e| BundleError::io(from, &e))?;
         let path = entry.path();
-        let file_type = entry
-            .file_type()
-            .map_err(|e| BundleError::io(&path, &e))?;
+        let file_type = entry.file_type().map_err(|e| BundleError::io(&path, &e))?;
         if file_type.is_symlink() {
             continue;
         }
@@ -407,7 +401,10 @@ mod tests {
 
         let bundle = Bundle::open(&root).unwrap();
         assert_eq!(
-            bundle.resources().read_to_string("fonts/Inter.txt").unwrap(),
+            bundle
+                .resources()
+                .read_to_string("fonts/Inter.txt")
+                .unwrap(),
             "hello"
         );
     }
@@ -510,7 +507,10 @@ mod tests {
             .unwrap();
 
         let bundle = Bundle::open(&root).unwrap();
-        assert_eq!(bundle.resources().read_to_string("real.txt").unwrap(), "inside");
+        assert_eq!(
+            bundle.resources().read_to_string("real.txt").unwrap(),
+            "inside"
+        );
         if linked {
             assert!(
                 !bundle.resources().exists("leak.txt"),

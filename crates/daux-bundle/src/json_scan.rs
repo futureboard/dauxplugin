@@ -249,8 +249,8 @@ fn scan_unicode_escape(bytes: &[u8], start: usize) -> BundleResult<(char, usize)
             let low = read_hex4(bytes, index + 2)?;
             if (0xDC00..0xE000).contains(&low) {
                 index += 6;
-                let combined = 0x1_0000 + ((u32::from(unit) - 0xD800) << 10)
-                    + (u32::from(low) - 0xDC00);
+                let combined =
+                    0x1_0000 + ((u32::from(unit) - 0xD800) << 10) + (u32::from(low) - 0xDC00);
                 let ch = char::from_u32(combined)
                     .ok_or_else(|| err(BundleErrorKind::Parse, "invalid surrogate pair"))?;
                 return Ok((ch, index));
@@ -354,7 +354,7 @@ mod tests {
         let err = prescan(&many).expect_err("too many");
         assert_eq!(err.kind(), &BundleErrorKind::LimitExceeded);
 
-        let ok = format!("[{}]", vec!["1"; 8].join(","));
+        let ok = format!("[{}]", ["1"; 8].join(","));
         prescan(&ok).expect("small array");
         prescan("[]").expect("empty array");
     }

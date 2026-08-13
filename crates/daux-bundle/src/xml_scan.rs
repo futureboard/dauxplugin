@@ -59,11 +59,12 @@ pub fn prescan(input: &str) -> BundleResult<()> {
             continue;
         }
         if input[index..].starts_with("<?") {
-            index = find(input, index + 2, "?>")
-                .ok_or_else(|| {
-                    err(BundleErrorKind::Parse, "unterminated processing instruction")
-                })?
-                + 2;
+            index = find(input, index + 2, "?>").ok_or_else(|| {
+                err(
+                    BundleErrorKind::Parse,
+                    "unterminated processing instruction",
+                )
+            })? + 2;
             continue;
         }
         if input[index..].starts_with("<!") {
@@ -89,7 +90,10 @@ pub fn prescan(input: &str) -> BundleResult<()> {
             match (name.as_str(), stack.pop()) {
                 ("dict", Some(Frame::Dict { .. })) | ("array", Some(Frame::Array { .. })) => {}
                 ("dict" | "array", _) => {
-                    return Err(err(BundleErrorKind::Parse, format!("`</{name}>` is unbalanced")));
+                    return Err(err(
+                        BundleErrorKind::Parse,
+                        format!("`</{name}>` is unbalanced"),
+                    ));
                 }
                 (_, Some(frame)) => stack.push(frame),
                 (_, None) => {}
@@ -150,12 +154,18 @@ pub fn prescan(input: &str) -> BundleResult<()> {
     if stack.is_empty() {
         Ok(())
     } else {
-        Err(err(BundleErrorKind::Parse, "unterminated `<dict>` or `<array>`"))
+        Err(err(
+            BundleErrorKind::Parse,
+            "unterminated `<dict>` or `<array>`",
+        ))
     }
 }
 
 fn find(input: &str, from: usize, needle: &str) -> Option<usize> {
-    input.get(from..).and_then(|rest| rest.find(needle)).map(|at| from + at)
+    input
+        .get(from..)
+        .and_then(|rest| rest.find(needle))
+        .map(|at| from + at)
 }
 
 /// Reads the tag starting at `input[start] == '<'`.
@@ -172,8 +182,7 @@ fn scan_tag(input: &str, start: usize) -> BundleResult<(String, bool, bool, usiz
     }
 
     let name_start = index;
-    while index < bytes.len()
-        && !matches!(bytes[index], b' ' | b'\t' | b'\r' | b'\n' | b'>' | b'/')
+    while index < bytes.len() && !matches!(bytes[index], b' ' | b'\t' | b'\r' | b'\n' | b'>' | b'/')
     {
         index += 1;
     }
@@ -248,7 +257,10 @@ fn decode_entities(raw: &str) -> String {
                     .strip_prefix("#x")
                     .or_else(|| numeric.strip_prefix("#X"))
                     .map_or((&numeric[1..], 10), |hex| (hex, 16));
-                match u32::from_str_radix(digits, radix).ok().and_then(char::from_u32) {
+                match u32::from_str_radix(digits, radix)
+                    .ok()
+                    .and_then(char::from_u32)
+                {
                     Some(ch) => out.push(ch),
                     None => out.push_str(&tail[..=semi]),
                 }
@@ -285,7 +297,8 @@ mod tests {
 
     #[test]
     fn rejects_duplicate_keys_in_one_dict() {
-        let document = plist("<dict><key>a</key><string>1</string><key>a</key><string>2</string></dict>");
+        let document =
+            plist("<dict><key>a</key><string>1</string><key>a</key><string>2</string></dict>");
         let err = prescan(&document).expect_err("duplicate");
         assert_eq!(err.kind(), &BundleErrorKind::DuplicateKey);
 
@@ -299,7 +312,9 @@ mod tests {
 
     #[test]
     fn entity_encoded_keys_collide_with_their_plain_spelling() {
-        let document = plist("<dict><key>a&#98;</key><string>1</string><key>ab</key><string>2</string></dict>");
+        let document = plist(
+            "<dict><key>a&#98;</key><string>1</string><key>ab</key><string>2</string></dict>",
+        );
         let err = prescan(&document).expect_err("duplicate after decoding");
         assert_eq!(err.kind(), &BundleErrorKind::DuplicateKey);
     }
@@ -313,14 +328,21 @@ mod tests {
 
     #[test]
     fn rejects_excessive_depth() {
-        let body = format!("{}{}", "<dict><key>k</key>".repeat(MAX_DEPTH + 1), "</dict>".repeat(MAX_DEPTH + 1));
+        let body = format!(
+            "{}{}",
+            "<dict><key>k</key>".repeat(MAX_DEPTH + 1),
+            "</dict>".repeat(MAX_DEPTH + 1)
+        );
         let err = prescan(&plist(&body)).expect_err("too deep");
         assert_eq!(err.kind(), &BundleErrorKind::DepthExceeded);
     }
 
     #[test]
     fn counts_array_elements() {
-        let body = format!("<array>{}</array>", "<string>x</string>".repeat(MAX_ARRAY_ELEMENTS + 1));
+        let body = format!(
+            "<array>{}</array>",
+            "<string>x</string>".repeat(MAX_ARRAY_ELEMENTS + 1)
+        );
         let err = prescan(&plist(&body)).expect_err("too many");
         assert_eq!(err.kind(), &BundleErrorKind::LimitExceeded);
     }
