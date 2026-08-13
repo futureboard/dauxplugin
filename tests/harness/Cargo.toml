@@ -24,6 +24,16 @@ daux-transport = { workspace = true }
 
 [dev-dependencies]
 daux-plugin = { workspace = true }
+# Named directly, not through the facade, so the `derive_output` suite can prove the
+# `#[params(crate = ::daux_plugin_api)]` escape hatch resolves. A workspace crate cannot
+# depend on `daux-plugin` without a cycle, so that redirect is the only way such a crate can
+# use the derives at all — and nothing else compiles its output.
+daux-plugin-api = { workspace = true }
+# Pulled in so that cargo builds `examples/gain`'s `cdylib` before this crate's tests run.
+# The `end_to_end` suite finds that dynamic library next to the test binary, packages it into
+# a real `.axt`, and drives it over the C ABI — which is the only way to exercise the
+# `bundle → LoadLibrary → factory → instance → process` path end to end.
+daux-example-gain = { workspace = true }
 
 [lints]
 workspace = true

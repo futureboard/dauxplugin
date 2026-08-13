@@ -1287,6 +1287,9 @@ dependencies = [
  "clap",
  "daux-abi",
  "daux-bundle",
+ "daux-format-axt",
+ "daux-format-clap",
+ "daux-format-vst3",
  "daux-host",
  "daux-runtime",
  "daux-scan",
@@ -1403,6 +1406,7 @@ name = "daux-graphics-egui"
 version = "0.1.0"
 dependencies = [
  "daux-graphics",
+ "daux-host-services",
  "daux-parameter",
  "egui",
 ]
@@ -1412,6 +1416,7 @@ name = "daux-graphics-gl"
 version = "0.1.0"
 dependencies = [
  "daux-graphics",
+ "daux-host-services",
  "glow",
 ]
 
@@ -1574,10 +1579,12 @@ dependencies = [
  "daux-bundle",
  "daux-core",
  "daux-events",
+ "daux-example-gain",
  "daux-host",
  "daux-midi",
  "daux-parameter",
  "daux-plugin",
+ "daux-plugin-api",
  "daux-rt",
  "daux-runtime",
  "daux-scan",

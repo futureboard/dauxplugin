@@ -123,6 +123,12 @@ daux-scan = { version = "0.1.0", path = "crates/daux-scan" }
 daux-state = { version = "0.1.0", path = "crates/daux-state" }
 daux-transport = { version = "0.1.0", path = "crates/daux-transport" }
 
+# The gain example is a workspace dependency for one reason: `tests/harness` needs a real
+# `cdylib` exporting `daux_plugin_entry_v1` to point `daux-runtime` and `daux-scan` at. No
+# synthetic fixture can stand in for it — a fake binary proves the scanner's *failure* path
+# and nothing about the loading path.
+daux-example-gain = { version = "0.1.0", path = "examples/gain" }
+
 # ---- external ---------------------------------------------------------------
 # Core model crates stay dependency-free by policy; everything below is used by
 # host-side tooling, adapters or optional GUI backends only.
