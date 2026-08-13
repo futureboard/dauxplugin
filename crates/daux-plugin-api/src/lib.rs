@@ -179,14 +179,35 @@ pub use daux_transport::*;
 // bytes and reads better qualified.
 pub use daux_core::status;
 
-/// Implementation detail of `#[derive(DauxParams)]`. Not a public API and not covered by
-/// semantic versioning: it exists so generated code can name types through a single path.
+/// Implementation detail of the derives. Not a public API and not covered by semantic
+/// versioning: it exists so generated code can name types through a single path.
+///
+/// This is the **redirect target**. Generated code normally writes
+/// `::daux_plugin::__private::…`, which is why a plug-in crate can depend on the facade
+/// alone — but a crate inside this workspace cannot depend on `daux-plugin` without a cycle,
+/// so `#[params(crate = ::daux_plugin_api)]`, `#[plugin(crate = ..)]` and
+/// `#[state(crate = ..)]` point the same expansion here instead.
+///
+/// It therefore has to carry the **whole** set, not just the parameter half:
+/// `#[derive(DauxState)]` names five `daux-state` types and `#[derive(DauxPlugin)]` names
+/// four `daux-core` types plus `SampleFormats`. Dropping any one of them turns the documented
+/// escape hatch into a resolution error at the call site, in generated code the author never
+/// wrote. The unit test at the bottom of this file is what keeps the two `__private` modules
+/// in step.
 #[doc(hidden)]
 pub mod __private {
+    // `#[derive(DauxParams)]`.
     pub use daux_parameter::{
         BoolParam, EnumParam, FloatParam, IntParam, MeterParam, Param, ParamEnum, ParamFlags,
         ParamId, ParamMigration, ParamRange, Params, Smoothing,
     };
+
+    // `#[derive(DauxPlugin)]`.
+    pub use daux_audio::SampleFormats;
+    pub use daux_core::{Capabilities, Category, PluginDescriptor, Version};
+
+    // `#[derive(DauxState)]`.
+    pub use daux_state::{StateError, StateReader, StateResult, StateVersion, StateWriter};
 }
 
 /// The allocation tripwire, installed only while compiling this crate's tests, so that
@@ -263,5 +284,91 @@ mod tests {
         );
         let as_param: &dyn __private::Param = &p;
         assert_eq!(as_param.info().id, ParamId::new(1));
+    }
+
+    /// Names every one of the 22 items generated code can emit, so that a re-export removed
+    /// here fails *here* rather than inside somebody's `#[derive(..)]` expansion.
+    ///
+    /// `#[params(crate = ::daux_plugin_api)]` and its `plugin`/`state` siblings redirect the
+    /// derives at this module, so the set has to match `daux_plugin::__private` exactly. It
+    /// once carried only the 13 parameter names, which meant redirecting `DauxState` or
+    /// `DauxPlugin` here failed to resolve ten types — with no error anywhere until an author
+    /// tried the documented escape hatch.
+    #[test]
+    fn the_redirect_target_carries_every_name_the_derives_emit() {
+        // `#[derive(DauxParams)]` — 13. `EnumParam` and `ParamEnum` are exercised with a
+        // real value rather than a type alias, because a generic type is only proved
+        // nameable once its bound is actually satisfied.
+        let waveform = __private::EnumParam::new(
+            __private::ParamId::new(2),
+            "Shape",
+            __private_test_enum::Waveform::Saw,
+        );
+        assert_eq!(waveform.value(), __private_test_enum::Waveform::Saw);
+
+        type _P1 = __private::BoolParam;
+        type _P3 = __private::FloatParam;
+        type _P4 = __private::IntParam;
+        type _P5 = __private::MeterParam;
+        type _P6 = dyn __private::Param;
+        type _P7 = __private::ParamFlags;
+        type _P8 = __private::ParamId;
+        type _P9 = __private::ParamMigration;
+        type _P10 = __private::ParamRange;
+        type _P11 = dyn __private::Params;
+        type _P12 = __private::Smoothing;
+        fn _p13<E: __private::ParamEnum>() {}
+
+        // `#[derive(DauxPlugin)]` — 5.
+        type _D1 = __private::SampleFormats;
+        type _D2 = __private::Capabilities;
+        type _D3 = __private::Category;
+        type _D4 = __private::PluginDescriptor;
+        type _D5 = __private::Version;
+
+        // `#[derive(DauxState)]` — 5. `StateResult` is a generic alias, so it is named
+        // through a use rather than a `type` binding.
+        type _S1 = __private::StateError;
+        type _S2 = __private::StateReader;
+        type _S3 = __private::StateVersion;
+        type _S4 = __private::StateWriter;
+        fn _s5(r: __private::StateResult<u8>) -> Option<u8> {
+            r.ok()
+        }
+
+        // And they are the *same* types, not a second definition that happens to compile.
+        let _: __private::Category = Category::Effect;
+        let _: __private::StateVersion = StateVersion(1);
+        let _: __private::SampleFormats = SampleFormats::F32;
+    }
+}
+
+/// A parameter enum used only by the re-export test above; `EnumParam<E>` needs a concrete
+/// `E` to be nameable as a type.
+#[cfg(test)]
+mod __private_test_enum {
+    /// The two shapes.
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+    pub enum Waveform {
+        /// A sine.
+        Sine,
+        /// A saw.
+        Saw,
+    }
+
+    impl daux_parameter::ParamEnum for Waveform {
+        const VARIANTS: &'static [Self] = &[Self::Sine, Self::Saw];
+        fn name(self) -> &'static str {
+            match self {
+                Self::Sine => "Sine",
+                Self::Saw => "Saw",
+            }
+        }
+        fn index(self) -> u32 {
+            self as u32
+        }
+        fn from_index(index: u32) -> Option<Self> {
+            Self::VARIANTS.get(index as usize).copied()
+        }
     }
 }
