@@ -1,0 +1,21 @@
+[package]
+name = "daux-graphics"
+description = "Framework-neutral plug-in graphics abstraction: frameworks, renderers, presentation modes."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-host-services = { workspace = true }
+daux-parameter = { workspace = true }
+daux-rt = { workspace = true }
+raw-window-handle = { workspace = true }
+
+[lints]
+workspace = true

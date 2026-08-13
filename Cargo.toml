@@ -1,6 +1,177 @@
-[package]
-name = "dauxplug"
+[workspace]
+resolver = "3"
+members = [
+    # ---- foundation ---------------------------------------------------------
+    "crates/daux-abi",
+    "crates/daux-rt",
+    "crates/daux-audio",
+    "crates/daux-midi",
+    "crates/daux-events",
+    "crates/daux-parameter",
+    "crates/daux-state",
+    "crates/daux-transport",
+    "crates/daux-dsp",
+    # ---- model --------------------------------------------------------------
+    "crates/daux-host-services",
+    "crates/daux-core",
+    "crates/daux-graphics",
+    "crates/daux-bundle",
+    "crates/daux-protocol",
+    "crates/daux-ipc",
+    "crates/daux-plugin-api",
+    "crates/daux-plugin-macros",
+    "crates/daux-plugin",
+    # ---- format adapters ----------------------------------------------------
+    "crates/daux-format-axt",
+    "crates/daux-format-vst3",
+    "crates/daux-format-clap",
+    # ---- host side ----------------------------------------------------------
+    "crates/daux-runtime",
+    "crates/daux-scan",
+    "crates/daux-host",
+    "crates/daux-cli",
+    # ---- graphics backends (heavy; excluded from default-members) -----------
+    "crates/daux-graphics-egui",
+    "crates/daux-graphics-wgpu",
+    "crates/daux-graphics-gl",
+    "crates/daux-graphics-gpui",
+    # ---- examples -----------------------------------------------------------
+    "examples/gain",
+    "examples/synth",
+    "examples/midi-effect",
+    "examples/multi-plugin-bundle",
+    "examples/gain-egui",
+    "examples/analyzer-gpui",
+    # ---- tests --------------------------------------------------------------
+    "tests/harness",
+]
+
+# `cargo build` / `cargo test` with no `--workspace` flag stays fast and free of
+# heavy GPU/UI dependency trees. CI builds those in a dedicated job.
+default-members = [
+    "crates/daux-abi",
+    "crates/daux-rt",
+    "crates/daux-audio",
+    "crates/daux-midi",
+    "crates/daux-events",
+    "crates/daux-parameter",
+    "crates/daux-state",
+    "crates/daux-transport",
+    "crates/daux-dsp",
+    "crates/daux-host-services",
+    "crates/daux-core",
+    "crates/daux-graphics",
+    "crates/daux-bundle",
+    "crates/daux-protocol",
+    "crates/daux-ipc",
+    "crates/daux-plugin-api",
+    "crates/daux-plugin-macros",
+    "crates/daux-plugin",
+    "crates/daux-format-axt",
+    "crates/daux-format-vst3",
+    "crates/daux-format-clap",
+    "crates/daux-runtime",
+    "crates/daux-scan",
+    "crates/daux-host",
+    "crates/daux-cli",
+    "examples/gain",
+    "examples/synth",
+    "examples/midi-effect",
+    "examples/multi-plugin-bundle",
+    "tests/harness",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/futureboard-studio/dauxplug"
+homepage = "https://futureboard.studio/dauxplug"
+authors = ["Futureboard Studio"]
+keywords = ["audio", "plugin", "vst3", "clap", "dsp"]
+categories = ["multimedia::audio", "api-bindings"]
 
-[dependencies]
+[workspace.dependencies]
+# ---- internal ---------------------------------------------------------------
+daux-abi = { version = "0.1.0", path = "crates/daux-abi" }
+daux-audio = { version = "0.1.0", path = "crates/daux-audio" }
+daux-bundle = { version = "0.1.0", path = "crates/daux-bundle" }
+daux-core = { version = "0.1.0", path = "crates/daux-core" }
+daux-dsp = { version = "0.1.0", path = "crates/daux-dsp" }
+daux-events = { version = "0.1.0", path = "crates/daux-events" }
+daux-format-axt = { version = "0.1.0", path = "crates/daux-format-axt" }
+daux-format-clap = { version = "0.1.0", path = "crates/daux-format-clap" }
+daux-format-vst3 = { version = "0.1.0", path = "crates/daux-format-vst3" }
+daux-graphics = { version = "0.1.0", path = "crates/daux-graphics" }
+daux-graphics-egui = { version = "0.1.0", path = "crates/daux-graphics-egui" }
+daux-graphics-gl = { version = "0.1.0", path = "crates/daux-graphics-gl" }
+daux-graphics-gpui = { version = "0.1.0", path = "crates/daux-graphics-gpui" }
+daux-graphics-wgpu = { version = "0.1.0", path = "crates/daux-graphics-wgpu" }
+daux-host = { version = "0.1.0", path = "crates/daux-host" }
+daux-host-services = { version = "0.1.0", path = "crates/daux-host-services" }
+daux-ipc = { version = "0.1.0", path = "crates/daux-ipc" }
+daux-midi = { version = "0.1.0", path = "crates/daux-midi" }
+daux-parameter = { version = "0.1.0", path = "crates/daux-parameter" }
+daux-plugin = { version = "0.1.0", path = "crates/daux-plugin" }
+daux-plugin-api = { version = "0.1.0", path = "crates/daux-plugin-api" }
+daux-plugin-macros = { version = "0.1.0", path = "crates/daux-plugin-macros" }
+daux-protocol = { version = "0.1.0", path = "crates/daux-protocol" }
+daux-rt = { version = "0.1.0", path = "crates/daux-rt" }
+daux-runtime = { version = "0.1.0", path = "crates/daux-runtime" }
+daux-scan = { version = "0.1.0", path = "crates/daux-scan" }
+daux-state = { version = "0.1.0", path = "crates/daux-state" }
+daux-transport = { version = "0.1.0", path = "crates/daux-transport" }
+
+# ---- external ---------------------------------------------------------------
+# Core model crates stay dependency-free by policy; everything below is used by
+# host-side tooling, adapters or optional GUI backends only.
+anyhow = "1"
+clap = { version = "4.6", features = ["derive"] }
+egui = "0.36"
+glow = "0.17"
+# GPUI comes from the futureboard/gpui-se fork rather than crates.io. The fork carries
+# `gpui_embedded`, a GPUI platform that creates no windows and owns no event loop — which is
+# the only shape that works in a plug-in, where the host hands us a child view, tells us when
+# to idle, and runs several instances in one process. Upstream `gpui` 0.2 assumes GPUI *is*
+# the application and calls `exit`, which a DAW will not survive.
+gpui = { git = "https://github.com/futureboard/gpui-se", branch = "main" }
+# `bundled-fonts` on purpose: a DAW's font set is unpredictable and an editor that renders
+# with whatever the host happens to have installed looks different on every machine.
+gpui_embedded = { git = "https://github.com/futureboard/gpui-se", branch = "main", features = [
+    "audio",
+    "bundled-fonts",
+] }
+libloading = "0.9"
+plist = "1.10"
+pollster = "0.4"
+proc-macro2 = "1"
+quote = "1"
+raw-window-handle = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+syn = { version = "2", features = ["full", "extra-traits"] }
+toml = "0.9"
+wgpu = "30"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_SystemInformation",
+] }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"        # plug-in binaries must never abort a host process
+
+[profile.bench]
+lto = "thin"
+codegen-units = 1

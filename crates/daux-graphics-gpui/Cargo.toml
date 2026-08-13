@@ -1,0 +1,25 @@
+[package]
+name = "daux-graphics-gpui"
+description = "GPUI editor backend for DAUx plug-ins, over gpui_embedded."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-graphics = { workspace = true }
+daux-host-services = { workspace = true }
+daux-parameter = { workspace = true }
+gpui = { workspace = true }
+# The whole reason this backend is viable: a GPUI platform that never creates a window and
+# never owns an event loop. See the note in the workspace manifest.
+gpui_embedded = { workspace = true }
+raw-window-handle = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "daux-graphics-wgpu"
+description = "wgpu rendering backend for DAUx plug-in editors."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-graphics = { workspace = true }
+raw-window-handle = { workspace = true }
+wgpu = { workspace = true }
+pollster = { workspace = true }
+
+[lints]
+workspace = true

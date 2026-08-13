@@ -1,0 +1,30 @@
+# DAUxPlug lint configuration.
+#
+# The audio thread must not allocate, so the SDK keeps its hot-path types small
+# and explicit. These thresholds are deliberately tighter than clippy defaults.
+avoid-breaking-exported-api = false
+too-many-arguments-threshold = 8
+type-complexity-threshold = 500
+enum-variant-name-threshold = 4
+
+# Doc comments in this project name the DAUx concepts below; they are not typos.
+doc-valid-idents = [
+    "DAUx",
+    "DAUxPlug",
+    "AXT",
+    "CLAP",
+    "VST3",
+    "GPUI",
+    "WGPU",
+    "MIDI",
+    "SysEx",
+    "UMP",
+    "HiDPI",
+    "IOSurface",
+    "DMA",
+    "SIMD",
+    "AVX2",
+    "AVX512",
+    "NEON",
+    "..",
+]

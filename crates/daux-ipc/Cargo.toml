@@ -1,0 +1,19 @@
+[package]
+name = "daux-ipc"
+description = "Transport-agnostic control-plane and data-plane IPC for sandboxed DAUx plug-ins."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-protocol = { workspace = true }
+daux-rt = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,33 @@
+[package]
+name = "daux-plugin-api"
+description = "The safe, high-level DAUx plug-in authoring API."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-audio = { workspace = true }
+daux-core = { workspace = true }
+daux-events = { workspace = true }
+daux-graphics = { workspace = true }
+daux-host-services = { workspace = true }
+daux-midi = { workspace = true }
+daux-parameter = { workspace = true }
+daux-rt = { workspace = true }
+daux-state = { workspace = true }
+daux-transport = { workspace = true }
+
+[features]
+default = []
+# Opt-in `serde` support for state and metadata types. The model crates themselves stay
+# dependency-free; this only forwards to the one crate that offers it.
+serde = ["daux-state/serde"]
+
+[lints]
+workspace = true

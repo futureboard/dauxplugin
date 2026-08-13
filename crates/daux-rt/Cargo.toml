@@ -1,0 +1,17 @@
+[package]
+name = "daux-rt"
+description = "Real-time safe primitives for audio-thread code: lock-free queues, bounded buffers, thread markers."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "daux-example-multi-plugin"
+description = "One binary exposing several plug-ins through a single factory."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+daux-plugin = { workspace = true, features = ["axt"] }
+
+[lints]
+workspace = true

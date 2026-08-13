@@ -1,0 +1,18 @@
+[package]
+name = "daux-format-clap"
+description = "CLAP export adapter for DAUx plug-ins (pure Rust CLAP ABI bindings)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-plugin-api = { workspace = true }
+
+[lints]
+workspace = true

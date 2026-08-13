@@ -1,0 +1,42 @@
+[package]
+name = "daux-plugin"
+description = "DAUxPlug — write an audio plug-in once in Rust, export it as .axt, VST3 and CLAP."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-plugin-api = { workspace = true }
+daux-plugin-macros = { workspace = true, optional = true }
+daux-format-axt = { workspace = true, optional = true }
+daux-format-vst3 = { workspace = true, optional = true }
+daux-format-clap = { workspace = true, optional = true }
+daux-graphics-egui = { workspace = true, optional = true }
+daux-graphics-wgpu = { workspace = true, optional = true }
+daux-graphics-gl = { workspace = true, optional = true }
+daux-graphics-gpui = { workspace = true, optional = true }
+daux-dsp = { workspace = true, optional = true }
+
+[features]
+default = ["derive", "axt", "gui", "dsp"]
+derive = ["dep:daux-plugin-macros"]
+axt = ["dep:daux-format-axt"]
+vst3 = ["dep:daux-format-vst3"]
+clap = ["dep:daux-format-clap"]
+gui = []
+dsp = ["dep:daux-dsp"]
+egui = ["gui", "dep:daux-graphics-egui"]
+gpui = ["gui", "dep:daux-graphics-gpui"]
+wgpu = ["gui", "dep:daux-graphics-wgpu"]
+opengl = ["gui", "dep:daux-graphics-gl"]
+simd = ["daux-dsp?/simd"]
+serde = ["daux-plugin-api/serde"]
+
+[lints]
+workspace = true

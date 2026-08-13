@@ -1,1 +1,13 @@
 /target
+/target-*
+**/*.rs.bk
+*.pdb
+
+# `daux build` output
+/target/daux/
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

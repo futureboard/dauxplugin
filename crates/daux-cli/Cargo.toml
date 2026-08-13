@@ -1,0 +1,31 @@
+[package]
+name = "daux-cli"
+description = "The daux developer CLI: new, build, bundle, validate, inspect, scan."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "daux"
+path = "src/main.rs"
+
+[dependencies]
+daux-abi = { workspace = true }
+daux-bundle = { workspace = true }
+daux-host = { workspace = true }
+daux-runtime = { workspace = true }
+daux-scan = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+[lints]
+workspace = true

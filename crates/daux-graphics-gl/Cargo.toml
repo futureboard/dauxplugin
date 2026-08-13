@@ -1,0 +1,19 @@
+[package]
+name = "daux-graphics-gl"
+description = "OpenGL fallback rendering backend for DAUx plug-in editors."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-graphics = { workspace = true }
+glow = { workspace = true }
+
+[lints]
+workspace = true

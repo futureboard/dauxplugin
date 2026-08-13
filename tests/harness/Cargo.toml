@@ -1,0 +1,29 @@
+[package]
+name = "daux-tests"
+description = "Cross-crate integration, ABI, real-time and bundle test suites for DAUxPlug."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+daux-abi = { workspace = true }
+daux-audio = { workspace = true }
+daux-bundle = { workspace = true }
+daux-core = { workspace = true }
+daux-events = { workspace = true }
+daux-host = { workspace = true }
+daux-midi = { workspace = true }
+daux-parameter = { workspace = true }
+daux-rt = { workspace = true }
+daux-runtime = { workspace = true }
+daux-scan = { workspace = true }
+daux-state = { workspace = true }
+daux-transport = { workspace = true }
+
+[dev-dependencies]
+daux-plugin = { workspace = true }
+
+[lints]
+workspace = true

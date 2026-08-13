@@ -1,0 +1,22 @@
+[package]
+name = "daux-host-services"
+description = "Explicit host service interfaces (logging, worker, latency, automation) for DAUxPlug."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-audio = { workspace = true }
+daux-events = { workspace = true }
+daux-parameter = { workspace = true }
+daux-rt = { workspace = true }
+daux-transport = { workspace = true }
+
+[lints]
+workspace = true

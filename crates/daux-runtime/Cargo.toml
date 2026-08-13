@@ -1,0 +1,26 @@
+[package]
+name = "daux-runtime"
+description = "Host-side AXT runtime: bundle loading, ABI negotiation and safe plug-in handles."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-abi = { workspace = true }
+daux-audio = { workspace = true }
+daux-bundle = { workspace = true }
+daux-events = { workspace = true }
+daux-transport = { workspace = true }
+libloading = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
+
+[lints]
+workspace = true

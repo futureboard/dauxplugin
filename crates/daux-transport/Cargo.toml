@@ -1,0 +1,21 @@
+[package]
+name = "daux-transport"
+description = "Host transport, timeline and musical time model for DAUxPlug."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# `daux-events` owns the flat `TransportSnapshot` mirror and must stay below every other
+# crate, so it cannot depend on us. The conversion therefore lives on this side of the
+# edge — see `src/events.rs`. Still zero *external* dependencies.
+daux-events = { workspace = true }
+
+[lints]
+workspace = true

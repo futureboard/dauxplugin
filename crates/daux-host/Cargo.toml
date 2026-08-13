@@ -1,0 +1,24 @@
+[package]
+name = "daux-host"
+description = "Minimal in-process host harness for testing and previewing DAUx plug-ins."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+daux-abi = { workspace = true }
+daux-audio = { workspace = true }
+daux-events = { workspace = true }
+daux-midi = { workspace = true }
+daux-parameter = { workspace = true }
+daux-runtime = { workspace = true }
+daux-transport = { workspace = true }
+
+[lints]
+workspace = true

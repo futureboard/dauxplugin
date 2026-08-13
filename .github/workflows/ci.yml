@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- fast gate --
+  lint:
+    name: fmt + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - name: clippy (default members, warnings are errors)
+        run: cargo clippy --all-targets -- -D warnings
+
+  # ------------------------------------------------------------- core matrix --
+  test:
+    name: test ${{ matrix.os }}
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --locked
+      - run: cargo test --locked
+      # The real-time suite installs a counting allocator; run it single-threaded so the
+      # allocation counters are not perturbed by other tests.
+      - name: real-time safety suite
+        run: cargo test -p daux-tests --test realtime -- --test-threads=1
+
+  # --------------------------------------------------- representative features --
+  features:
+    name: feature combinations
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - "--no-default-features"
+          - "--no-default-features --features axt"
+          - "--no-default-features --features derive,axt"
+          - "--features vst3,clap"
+          - "--all-features --no-default-features --features derive,axt,vst3,clap,dsp,simd"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # A deliberately small, representative set — not a Cartesian explosion.
+      - run: cargo check -p daux-plugin ${{ matrix.features }}
+
+  # ------------------------------------------------------- bundle round-trip --
+  bundle:
+    name: build + bundle + validate (${{ matrix.os }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build the CLI
+        run: cargo build -p daux-cli --release --locked
+      - name: build and bundle the gain example
+        run: cargo run -p daux-cli --release -- build --release --package daux-example-gain --formats axt,clap
+      - name: validate the bundle
+        run: cargo run -p daux-cli --release -- validate target/daux/release/axt
+      - name: inspect the bundle
+        run: cargo run -p daux-cli --release -- inspect target/daux/release/axt
+      - name: scan the output directory
+        run: cargo run -p daux-cli --release -- scan --path target/daux/release
+
+  # ------------------------------------------------------ cross-compile check --
+  cross:
+    name: cross-check ${{ matrix.target }}
+    needs: lint
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-pc-windows-msvc
+            runner: windows-latest
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: x86_64-apple-darwin
+            runner: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      # Compile-only: these targets have no runner, but the SDK must not contain
+      # host-architecture assumptions (SIMD dispatch in particular).
+      - run: cargo check --target ${{ matrix.target }} -p daux-plugin -p daux-dsp -p daux-abi
+
+  # ------------------------------------------------------------ GUI backends --
+  graphics:
+    name: graphics backends (${{ matrix.os }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: linux GUI system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev pkg-config
+      - name: egui + wgpu + OpenGL backends
+        run: cargo check -p daux-graphics-egui -p daux-graphics-wgpu -p daux-graphics-gl
+
+  # GPUI drags a large native stack and is not yet supported on every runner image.
+  # It is tracked, not gating.
+  gpui:
+    name: gpui backend (experimental)
+    needs: lint
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev \
+            libvulkan-dev libfontconfig1-dev libfreetype6-dev pkg-config
+      - run: cargo check -p daux-graphics-gpui
+
+  # ------------------------------------------------------------------- docs --
+  docs:
+    name: rustdoc
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --no-deps --document-private-items
