@@ -512,7 +512,11 @@ mod tests {
             DauxError::from(Error::from(Io::PermissionDenied)).kind(),
             ErrorKind::Io
         );
-        assert!(!DauxError::from(Error::from(Io::NotFound)).message().is_empty());
+        assert!(
+            !DauxError::from(Error::from(Io::NotFound))
+                .message()
+                .is_empty()
+        );
     }
 
     #[test]

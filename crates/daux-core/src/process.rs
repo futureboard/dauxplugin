@@ -142,7 +142,10 @@ impl ProcessConfig {
         if !self.sample_rate.is_finite() || self.sample_rate <= 0.0 {
             return Err(DauxError::new(
                 ErrorKind::InvalidArgument,
-                format!("sample rate {} is not finite and positive", self.sample_rate),
+                format!(
+                    "sample rate {} is not finite and positive",
+                    self.sample_rate
+                ),
             ));
         }
         if self.max_block_size == 0 {
@@ -264,9 +267,12 @@ pub enum Tail {
 }
 
 impl Tail {
-    /// The ABI sentinel for [`Tail::Infinite`] (abi-v1 §11.3).
+    /// The ABI sentinel for [`Tail::Infinite`] — `DAUX_TAIL_INFINITE`, abi-v1 §11.5.
     pub const INFINITE_SAMPLES: u32 = u32::MAX;
-    /// The ABI sentinel for [`Tail::Unknown`] (abi-v1 §11.3).
+    /// The ABI sentinel for [`Tail::Unknown`] — `DAUX_TAIL_UNKNOWN`, abi-v1 §11.5.
+    ///
+    /// A host that does not distinguish the two must read this as infinite, never as a
+    /// finite tail; an adapter exporting to a format with one sentinel maps both onto it.
     pub const UNKNOWN_SAMPLES: u32 = u32::MAX - 1;
 
     /// [audio-thread] Encodes the tail as the ABI's single `u32`.
@@ -558,6 +564,24 @@ mod tests {
         assert!(Tail::Samples(10).is_bounded());
         assert!(!Tail::Unknown.is_bounded());
         assert_eq!(Tail::Samples(64).to_string(), "64 samples");
+    }
+
+    /// Pins both sentinels to the literals abi-v1 §11.5 fixes.
+    ///
+    /// A round-trip test cannot catch a wrong number: a self-consistent encoding round-trips
+    /// perfectly and still tells every non-DAUx host something false. `daux-core` cannot
+    /// depend on `daux-abi`, so the constants are restated here and this is what keeps the
+    /// two honest — the same arrangement `Category::code` uses for §6.1.
+    #[test]
+    fn tail_sentinels_match_abi_v1_section_11_5() {
+        assert_eq!(Tail::INFINITE_SAMPLES, u32::MAX, "DAUX_TAIL_INFINITE");
+        assert_eq!(Tail::UNKNOWN_SAMPLES, u32::MAX - 1, "DAUX_TAIL_UNKNOWN");
+        // Everything below the two sentinels is a real, finite tail — including the largest
+        // one a plug-in can express, which must not be mistaken for a sentinel.
+        assert_eq!(
+            Tail::from_samples(u32::MAX - 2),
+            Tail::Samples(u32::MAX - 2)
+        );
     }
 
     #[test]

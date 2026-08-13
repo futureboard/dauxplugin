@@ -423,10 +423,14 @@ impl EventRecord {
     #[must_use]
     pub const fn payload_bytes_for(kind: u16) -> Option<u16> {
         match kind {
-            DAUX_EVENT_NOTE_ON | DAUX_EVENT_NOTE_OFF | DAUX_EVENT_NOTE_CHOKE
+            DAUX_EVENT_NOTE_ON
+            | DAUX_EVENT_NOTE_OFF
+            | DAUX_EVENT_NOTE_CHOKE
             | DAUX_EVENT_NOTE_END => Some(24),
             DAUX_EVENT_NOTE_EXPRESSION => Some(24),
-            DAUX_EVENT_PARAM_VALUE | DAUX_EVENT_PARAM_MOD | DAUX_EVENT_PARAM_GESTURE_BEGIN
+            DAUX_EVENT_PARAM_VALUE
+            | DAUX_EVENT_PARAM_MOD
+            | DAUX_EVENT_PARAM_GESTURE_BEGIN
             | DAUX_EVENT_PARAM_GESTURE_END => Some(24),
             DAUX_EVENT_MIDI1 => Some(3),
             DAUX_EVENT_MIDI2 => Some(20),
@@ -485,7 +489,9 @@ impl EventRecord {
         self.validate()?;
         let mut r = PayloadReader::new(&self.payload);
         Ok(match self.kind {
-            DAUX_EVENT_NOTE_ON | DAUX_EVENT_NOTE_OFF | DAUX_EVENT_NOTE_CHOKE
+            DAUX_EVENT_NOTE_ON
+            | DAUX_EVENT_NOTE_OFF
+            | DAUX_EVENT_NOTE_CHOKE
             | DAUX_EVENT_NOTE_END => EventPayload::Note(NotePayload {
                 note_id: r.i32(),
                 channel: r.i16(),
@@ -507,7 +513,9 @@ impl EventRecord {
                     value: r.f64(),
                 })
             }
-            DAUX_EVENT_PARAM_VALUE | DAUX_EVENT_PARAM_MOD | DAUX_EVENT_PARAM_GESTURE_BEGIN
+            DAUX_EVENT_PARAM_VALUE
+            | DAUX_EVENT_PARAM_MOD
+            | DAUX_EVENT_PARAM_GESTURE_BEGIN
             | DAUX_EVENT_PARAM_GESTURE_END => {
                 let param_id = r.u32();
                 let note_id = r.i32();
@@ -852,21 +860,35 @@ impl AudioBlockHeader {
             return Err(ProtocolError::layout("AudioBlockHeader::channel_stride"));
         }
 
-        let inputs = self.plane_span("AudioBlockHeader::input", self.input_offset, self.input_channels, stride)?;
-        let outputs = self.plane_span("AudioBlockHeader::output", self.output_offset, self.output_channels, stride)?;
+        let inputs = self.plane_span(
+            "AudioBlockHeader::input",
+            self.input_offset,
+            self.input_channels,
+            stride,
+        )?;
+        let outputs = self.plane_span(
+            "AudioBlockHeader::output",
+            self.output_offset,
+            self.output_channels,
+            stride,
+        )?;
         let in_events = span(
             "AudioBlockHeader::input_event_offset",
             self.input_event_offset,
             (self.input_event_capacity as usize)
                 .checked_mul(EventRecord::SIZE)
-                .ok_or(ProtocolError::layout("AudioBlockHeader::input_event_capacity"))?,
+                .ok_or(ProtocolError::layout(
+                    "AudioBlockHeader::input_event_capacity",
+                ))?,
         )?;
         let out_events = span(
             "AudioBlockHeader::output_event_offset",
             self.output_event_offset,
             (self.output_event_capacity as usize)
                 .checked_mul(EventRecord::SIZE)
-                .ok_or(ProtocolError::layout("AudioBlockHeader::output_event_capacity"))?,
+                .ok_or(ProtocolError::layout(
+                    "AudioBlockHeader::output_event_capacity",
+                ))?,
         )?;
         let blob = span(
             "AudioBlockHeader::blob_offset",
@@ -882,10 +904,9 @@ impl AudioBlockHeader {
             if s.0 < Self::SIZE {
                 return Err(ProtocolError::layout("AudioBlockHeader::overlaps_header"));
             }
-            let end = s
-                .0
-                .checked_add(s.1)
-                .ok_or(ProtocolError::layout("AudioBlockHeader::span"))?;
+            let end =
+                s.0.checked_add(s.1)
+                    .ok_or(ProtocolError::layout("AudioBlockHeader::span"))?;
             if end > region_len {
                 return Err(ProtocolError::layout("AudioBlockHeader::past_region_end"));
             }
@@ -1042,7 +1063,11 @@ impl AudioBlockLayout {
     /// the layout is outside `limits`, and
     /// [`ProtocolErrorKind::InvalidLayout`](crate::ProtocolErrorKind::InvalidLayout) on
     /// arithmetic overflow.
-    pub fn header(&self, instance: u64, limits: &ProtocolLimits) -> ProtocolResult<AudioBlockHeader> {
+    pub fn header(
+        &self,
+        instance: u64,
+        limits: &ProtocolLimits,
+    ) -> ProtocolResult<AudioBlockHeader> {
         Ok(self.compute(limits)?.1.with_instance(instance))
     }
 
@@ -1259,7 +1284,20 @@ mod tests {
     /// there are none by adding the field sizes up.
     #[test]
     fn layout_has_no_padding() {
-        let header_fields = 4 + 2 + 2 + 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 * 6 + 4 * 6 + 8 + 8
+        let header_fields = 4
+            + 2
+            + 2
+            + 8
+            + 8
+            + 8
+            + 4
+            + 4
+            + 4
+            + 4
+            + 8 * 6
+            + 4 * 6
+            + 8
+            + 8
             + TransportSnapshot::SIZE
             + 4
             + 4
@@ -1402,9 +1440,11 @@ mod tests {
                 EventRecord::payload_bytes_for(kind).unwrap()
             );
             // The unused tail is zero, so a record has exactly one encoding.
-            assert!(record.payload[record.payload_len as usize..]
-                .iter()
-                .all(|b| *b == 0));
+            assert!(
+                record.payload[record.payload_len as usize..]
+                    .iter()
+                    .all(|b| *b == 0)
+            );
         }
     }
 
@@ -1412,7 +1452,10 @@ mod tests {
     fn an_unknown_event_kind_is_rejected_rather_than_read_as_something_else() {
         let mut r = EventRecord::with_payload(0, DAUX_EVENT_MIDI1, 0, EventPayload::Midi1([0; 3]));
         r.kind = 0;
-        assert_eq!(r.validate().unwrap_err().kind(), ProtocolErrorKind::InvalidValue);
+        assert_eq!(
+            r.validate().unwrap_err().kind(),
+            ProtocolErrorKind::InvalidValue
+        );
         r.kind = 4242; // below the vendor range and unassigned
         assert!(r.validate().is_err());
         assert!(r.payload().is_err());
@@ -1424,12 +1467,8 @@ mod tests {
 
     #[test]
     fn a_record_with_a_wrong_length_or_dirty_slack_is_rejected() {
-        let base = EventRecord::with_payload(
-            0,
-            DAUX_EVENT_MIDI1,
-            0,
-            EventPayload::Midi1([0x90, 60, 100]),
-        );
+        let base =
+            EventRecord::with_payload(0, DAUX_EVENT_MIDI1, 0, EventPayload::Midi1([0x90, 60, 100]));
         let mut short = base;
         short.payload_len = 2;
         assert!(short.validate().is_err());
@@ -1464,17 +1503,19 @@ mod tests {
             );
             assert!(r.validate().is_err(), "count {count} words {words:?}");
         }
-        assert!(EventRecord::with_payload(
-            0,
-            DAUX_EVENT_MIDI2,
-            0,
-            EventPayload::Midi2(Midi2Payload {
-                word_count: 4,
-                words: [1, 2, 3, 4],
-            })
-        )
-        .validate()
-        .is_ok());
+        assert!(
+            EventRecord::with_payload(
+                0,
+                DAUX_EVENT_MIDI2,
+                0,
+                EventPayload::Midi2(Midi2Payload {
+                    word_count: 4,
+                    words: [1, 2, 3, 4],
+                })
+            )
+            .validate()
+            .is_ok()
+        );
     }
 
     #[test]
@@ -1514,7 +1555,9 @@ mod tests {
     #[test]
     fn a_layout_with_no_audio_and_no_events_still_produces_a_valid_region() {
         let limits = ProtocolLimits::new();
-        let layout = AudioBlockLayout::new(0, 0, 1).with_events(0, 0).with_blob_bytes(0);
+        let layout = AudioBlockLayout::new(0, 0, 1)
+            .with_events(0, 0)
+            .with_blob_bytes(0);
         let len = layout.region_len(&limits).unwrap();
         let header = layout.header(1, &limits).unwrap();
         header.validate(len, &limits).unwrap();
@@ -1524,7 +1567,9 @@ mod tests {
     #[test]
     fn double_precision_doubles_the_stride() {
         let limits = ProtocolLimits::new();
-        let f32_len = AudioBlockLayout::new(2, 2, 512).region_len(&limits).unwrap();
+        let f32_len = AudioBlockLayout::new(2, 2, 512)
+            .region_len(&limits)
+            .unwrap();
         let f64_layout =
             AudioBlockLayout::new(2, 2, 512).with_sample_format(DAUX_SAMPLE_FORMAT_F64);
         assert_eq!(f64_layout.channel_stride().unwrap(), 4096);

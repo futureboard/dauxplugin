@@ -117,7 +117,10 @@ impl fmt::Display for ProtocolErrorKind {
             }
             Self::InvalidValue => f.write_str("field value is out of range"),
             Self::ChecksumMismatch { expected, found } => {
-                write!(f, "payload CRC {found:#010x} does not match header {expected:#010x}")
+                write!(
+                    f,
+                    "payload CRC {found:#010x} does not match header {expected:#010x}"
+                )
             }
             Self::InvalidUtf8 => f.write_str("string field is not valid UTF-8"),
             Self::InvalidLayout => f.write_str("shared-memory layout is inconsistent"),
@@ -163,7 +166,10 @@ impl ProtocolError {
     /// [any-thread] A length field asked for more than the configured bound allows.
     #[must_use]
     pub const fn limit(context: &'static str, limit: usize, requested: usize) -> Self {
-        Self::new(ProtocolErrorKind::LimitExceeded { limit, requested }, context)
+        Self::new(
+            ProtocolErrorKind::LimitExceeded { limit, requested },
+            context,
+        )
     }
 
     /// [any-thread] A field was structurally present but semantically impossible.

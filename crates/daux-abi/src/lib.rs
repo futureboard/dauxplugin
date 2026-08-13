@@ -124,7 +124,7 @@ pub use crate::ext::params::{
     DauxParamInfoV1, DauxParamsApiV1,
 };
 pub use crate::ext::render::{
-    DAUX_TAIL_INFINITE, DauxLatencyApiV1, DauxRenderApiV1, DauxTailApiV1,
+    DAUX_TAIL_INFINITE, DAUX_TAIL_UNKNOWN, DauxLatencyApiV1, DauxRenderApiV1, DauxTailApiV1,
 };
 pub use crate::ext::state::{DauxStateApiV1, DauxStreamV1};
 pub use crate::factory::DauxFactoryApiV1;

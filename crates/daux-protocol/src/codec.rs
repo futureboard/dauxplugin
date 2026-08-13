@@ -22,7 +22,10 @@ use crate::limits::ProtocolLimits;
 /// The primitive set is deliberately complete rather than trimmed to today's callers: a codec
 /// with a hole in it invites the next message type to hand-roll the missing read, which is
 /// how an unchecked one gets in. Wire compatibility means the set only ever grows.
-#[allow(dead_code, reason = "a codec keeps a complete primitive set, not a used-today set")]
+#[allow(
+    dead_code,
+    reason = "a codec keeps a complete primitive set, not a used-today set"
+)]
 pub(crate) struct Reader<'a> {
     bytes: &'a [u8],
     pos: usize,
@@ -41,6 +44,12 @@ macro_rules! read_int {
     };
 }
 
+// The `allow` on the type itself does not reach its inherent methods, so it is repeated
+// here. See the note on `Reader` for why the primitive set is complete rather than trimmed.
+#[allow(
+    dead_code,
+    reason = "a codec keeps a complete primitive set, not a used-today set"
+)]
 impl<'a> Reader<'a> {
     /// Starts a cursor at the beginning of `bytes`.
     pub(crate) const fn new(bytes: &'a [u8]) -> Self {
@@ -174,6 +183,7 @@ macro_rules! write_int {
     };
 }
 
+#[allow(dead_code, reason = "kept symmetric with Reader; see the note there")]
 impl<'a> Writer<'a> {
     /// Appends to `buf`, which may already hold earlier frames.
     pub(crate) fn new(buf: &'a mut Vec<u8>, limits: ProtocolLimits) -> Self {
@@ -321,7 +331,10 @@ mod tests {
         );
         let bytes = 1u32.to_le_bytes();
         assert_eq!(
-            Reader::new(&bytes).reserved_u32("reserved").unwrap_err().kind(),
+            Reader::new(&bytes)
+                .reserved_u32("reserved")
+                .unwrap_err()
+                .kind(),
             ProtocolErrorKind::InvalidValue
         );
         let bytes = 0u32.to_le_bytes();
@@ -360,7 +373,9 @@ mod tests {
         let limits = ProtocolLimits::new();
         for payload in [vec![], vec![0u8], vec![7u8; 1000]] {
             let mut buf = Vec::new();
-            Writer::new(&mut buf, limits).blob("state", &payload).unwrap();
+            Writer::new(&mut buf, limits)
+                .blob("state", &payload)
+                .unwrap();
             let mut r = Reader::new(&buf);
             assert_eq!(r.blob("state", &limits).unwrap(), payload);
             r.finish("payload").unwrap();

@@ -383,7 +383,9 @@ mod tests {
         let processor = plugin.processor();
         assert_eq!(processor.latency(), Latency::Zero);
         assert_eq!(processor.tail(), Tail::None);
-        processor.prepare(&ProcessConfig::new(48_000.0, 256)).unwrap();
+        processor
+            .prepare(&ProcessConfig::new(48_000.0, 256))
+            .unwrap();
         processor.activate().unwrap();
         processor.reset();
         processor.deactivate();

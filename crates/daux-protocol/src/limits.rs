@@ -104,7 +104,12 @@ impl ProtocolLimits {
     /// [any-thread] Returns the limits with different audio-block bounds.
     #[inline]
     #[must_use]
-    pub const fn with_audio_bounds(mut self, channels: usize, frames: usize, events: usize) -> Self {
+    pub const fn with_audio_bounds(
+        mut self,
+        channels: usize,
+        frames: usize,
+        events: usize,
+    ) -> Self {
         self.max_channels = channels;
         self.max_frames = frames;
         self.max_events = events;
@@ -115,7 +120,8 @@ impl ProtocolLimits {
     #[inline]
     #[must_use]
     pub const fn max_payload_bytes(&self) -> usize {
-        self.max_frame_bytes.saturating_sub(crate::framing::FRAME_HEADER_LEN)
+        self.max_frame_bytes
+            .saturating_sub(crate::framing::FRAME_HEADER_LEN)
     }
 }
 

@@ -113,7 +113,10 @@ impl PluginId {
                 )));
             }
             for byte in bytes {
-                if !byte.is_ascii_lowercase() && !byte.is_ascii_digit() && byte != b'-' && byte != b'_'
+                if !byte.is_ascii_lowercase()
+                    && !byte.is_ascii_digit()
+                    && byte != b'-'
+                    && byte != b'_'
                 {
                     return Err(bad(format!(
                         "plug-in id label `{label}` contains `{}`; only lower-case ASCII letters, \
@@ -125,9 +128,7 @@ impl PluginId {
         }
 
         if !id.bytes().any(|b| b.is_ascii_lowercase()) {
-            return Err(bad(format!(
-                "plug-in id `{id}` contains no ASCII letter"
-            )));
+            return Err(bad(format!("plug-in id `{id}` contains no ASCII letter")));
         }
 
         Ok(())
@@ -370,7 +371,11 @@ mod tests {
         // Digits alone satisfy the label grammar but make a meaningless id, and
         // the specification requires at least one ASCII letter.
         let err = PluginId::new("1.2").expect_err("no letters");
-        assert!(err.message().contains("no ASCII letter"), "{}", err.message());
+        assert!(
+            err.message().contains("no ASCII letter"),
+            "{}",
+            err.message()
+        );
         assert!(PluginId::new("1.2a").is_ok());
         assert!(PluginId::new("1-2_3.4").is_err());
     }

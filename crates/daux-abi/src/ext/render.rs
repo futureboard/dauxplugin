@@ -7,6 +7,14 @@ use crate::status::{DauxBool, DauxStatus};
 /// Tail length returned by [`DauxTailApiV1::get`] for a tail that never ends.
 pub const DAUX_TAIL_INFINITE: u32 = u32::MAX;
 
+/// Tail length returned by [`DauxTailApiV1::get`] when the plug-in cannot say yet.
+///
+/// Distinct from [`DAUX_TAIL_INFINITE`] (`abi-v1` §11.5): "infinite" is a settled answer, and
+/// "unknown" may change on a later call. Both mean the host must keep calling `process`, and
+/// a host that does not distinguish them MUST treat this as infinite — never as a finite tail
+/// of 4 294 967 294 samples, which is over a day of audio at 48 kHz.
+pub const DAUX_TAIL_UNKNOWN: u32 = u32::MAX - 1;
+
 /// Function table of the `daux.latency/1` extension.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -31,7 +39,7 @@ pub struct DauxTailApiV1 {
     pub size: u32,
     /// Reserved for alignment; MUST be zero.
     pub _pad0: u32,
-    /// Samples of tail, or [`DAUX_TAIL_INFINITE`]. [any-thread]
+    /// Samples of tail, [`DAUX_TAIL_INFINITE`] or [`DAUX_TAIL_UNKNOWN`]. [any-thread]
     pub get: unsafe extern "C" fn(p: DauxPluginHandle) -> u32,
     /// Reserved for future minor revisions; MUST be all zero.
     pub reserved: [usize; 2],

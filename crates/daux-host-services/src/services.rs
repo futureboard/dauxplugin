@@ -409,7 +409,10 @@ mod tests {
     }
     impl HostParams for Everything {
         fn gesture_begin(&self, id: ParamId) {
-            self.lines.lock().unwrap().push(format!("begin {}", id.get()));
+            self.lines
+                .lock()
+                .unwrap()
+                .push(format!("begin {}", id.get()));
         }
         fn gesture_end(&self, id: ParamId) {
             self.lines.lock().unwrap().push(format!("end {}", id.get()));
@@ -586,13 +589,7 @@ mod tests {
         assert_eq!(spy.timers.load(Ordering::Relaxed), 0);
         assert_eq!(
             *spy.lines.lock().unwrap(),
-            [
-                "info:hello",
-                "begin 1",
-                "set 1 0.5",
-                "end 1",
-                "rescan 1",
-            ]
+            ["info:hello", "begin 1", "set 1 0.5", "end 1", "rescan 1",]
         );
     }
 

@@ -842,6 +842,10 @@ fn process_and_transport_constants_match_the_specification() {
     assert_eq!(DAUX_TRANSPORT_HAS_TEMPO, 1);
     assert_eq!(DAUX_TRANSPORT_IS_PREROLL, 1 << 9);
     assert_eq!(DAUX_TAIL_INFINITE, u32::MAX);
+    // Adjacent on purpose (`abi-v1` §11.5): both sentinels sit at the top of the range so
+    // that every value a plug-in could plausibly mean as a real tail stays a real tail.
+    assert_eq!(DAUX_TAIL_UNKNOWN, u32::MAX - 1);
+    assert_ne!(DAUX_TAIL_UNKNOWN, DAUX_TAIL_INFINITE);
     assert_eq!(DAUX_SAMPLE_FORMAT_F32 | DAUX_SAMPLE_FORMAT_F64, 0b11);
 }
 

@@ -199,7 +199,11 @@ impl Capabilities {
     #[inline]
     #[must_use]
     pub const fn set(self, other: Self, on: bool) -> Self {
-        if on { self.union(other) } else { self.without(other) }
+        if on {
+            self.union(other)
+        } else {
+            self.without(other)
+        }
     }
 
     /// Bits set but not defined by ABI v1 — a plug-in built against a newer
@@ -388,7 +392,10 @@ mod tests {
             a.set(Capabilities::HAS_GUI, true),
             a | Capabilities::HAS_GUI
         );
-        assert_eq!(a.set(Capabilities::SIDECHAIN, false), Capabilities::AUDIO_EFFECT);
+        assert_eq!(
+            a.set(Capabilities::SIDECHAIN, false),
+            Capabilities::AUDIO_EFFECT
+        );
 
         let mut b = Capabilities::NONE;
         b |= Capabilities::ANALYZER;

@@ -866,9 +866,9 @@ impl ControlMessage {
     /// strength of an unvalidated length.
     pub fn decode(frame: &[u8], limits: &ProtocolLimits) -> ProtocolResult<Self> {
         let header = FrameHeader::parse(frame, limits)?;
-        let payload = frame
-            .get(FRAME_HEADER_LEN..)
-            .ok_or_else(|| ProtocolError::truncated("frame.payload", FRAME_HEADER_LEN, frame.len()))?;
+        let payload = frame.get(FRAME_HEADER_LEN..).ok_or_else(|| {
+            ProtocolError::truncated("frame.payload", FRAME_HEADER_LEN, frame.len())
+        })?;
         header.verify_payload(payload)?;
         Self::decode_payload(header.kind, payload, limits)
     }
@@ -1391,8 +1391,13 @@ mod tests {
     #[test]
     fn every_tail_and_gesture_variant_round_trips() {
         let limits = ProtocolLimits::new();
-        for tail in [Tail::None, Tail::Samples(0), Tail::Samples(7), Tail::Infinite, Tail::Unknown]
-        {
+        for tail in [
+            Tail::None,
+            Tail::Samples(0),
+            Tail::Samples(7),
+            Tail::Infinite,
+            Tail::Unknown,
+        ] {
             let msg = ControlMessage::ReportTail {
                 instance: InstanceId(1),
                 tail,
@@ -1659,7 +1664,10 @@ mod tests {
         }
         .encode_into(&mut out, FrameFlags::NONE, &limits)
         .unwrap_err();
-        assert!(matches!(err.kind(), ProtocolErrorKind::LimitExceeded { .. }));
+        assert!(matches!(
+            err.kind(),
+            ProtocolErrorKind::LimitExceeded { .. }
+        ));
         assert_eq!(out, after_first, "a rejected message left partial bytes");
     }
 
@@ -1682,8 +1690,7 @@ mod tests {
         assert_eq!(out.len(), len_a + len_b);
         assert_eq!(ControlMessage::decode(&out[..len_a], &limits).unwrap(), a);
         assert_eq!(ControlMessage::decode(&out[len_a..], &limits).unwrap(), b);
-        let header =
-            crate::framing::FrameHeader::parse(&out[len_a..], &limits).unwrap();
+        let header = crate::framing::FrameHeader::parse(&out[len_a..], &limits).unwrap();
         assert!(header.flags.contains(FrameFlags::RESPONSE));
         assert_eq!(header.frame_len(), len_b);
         assert_eq!(header.payload_len as usize, len_b - FRAME_HEADER_LEN);

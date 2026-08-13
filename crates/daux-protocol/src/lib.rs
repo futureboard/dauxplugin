@@ -40,21 +40,19 @@ mod framing;
 mod limits;
 
 pub use control::{
-    ControlMessage, Diagnostics, EditorWindow, ErrorMessage, FeatureFlags, GesturePhase,
-    Handshake, InstanceId, MessageKind, PeerRole, ProcessConfigMsg, RequestId, RestartFlags,
-    Tail,
+    ControlMessage, Diagnostics, EditorWindow, ErrorMessage, FeatureFlags, GesturePhase, Handshake,
+    InstanceId, MessageKind, PeerRole, ProcessConfigMsg, RequestId, RestartFlags, Tail,
 };
 pub use data::{
     AUDIO_BLOCK_FLAG_IN_PLACE, AUDIO_BLOCK_FLAG_INPUT_EVENTS_TRUNCATED,
     AUDIO_BLOCK_FLAG_OUTPUT_EVENTS_TRUNCATED, AUDIO_BLOCK_FLAG_SILENCE_OUTPUT,
     AUDIO_BLOCK_FLAG_TRANSPORT_VALID, AUDIO_BLOCK_MAGIC, AUDIO_BLOCK_VERSION, AudioBlockHeader,
     AudioBlockLayout, BlobRef, EVENT_PAYLOAD_BYTES, EventPayload, EventRecord, Midi2Payload,
-    NoteExpressionPayload, NotePayload, ParamPayload, REGION_ALIGN, TransportSnapshot,
-    align_up, sample_bytes,
+    NoteExpressionPayload, NotePayload, ParamPayload, REGION_ALIGN, TransportSnapshot, align_up,
+    sample_bytes,
 };
 pub use error::{ProtocolError, ProtocolErrorKind, ProtocolResult};
 pub use framing::{
-    FRAME_HEADER_LEN, FRAME_MAGIC, FrameFlags, FrameHeader, PROTOCOL_VERSION, crc32,
-    peek_frame_len,
+    FRAME_HEADER_LEN, FRAME_MAGIC, FrameFlags, FrameHeader, PROTOCOL_VERSION, crc32, peek_frame_len,
 };
 pub use limits::ProtocolLimits;

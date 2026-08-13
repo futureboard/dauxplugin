@@ -131,10 +131,10 @@ impl FrameHeader {
     pub const LEN: usize = FRAME_HEADER_LEN;
 
     /// [any-thread] Builds a header for a payload that has already been produced.
-    #[must_use]
     pub fn for_payload(kind: u16, flags: FrameFlags, payload: &[u8]) -> ProtocolResult<Self> {
-        let payload_len = u32::try_from(payload.len())
-            .map_err(|_| ProtocolError::limit("frame.payload_len", u32::MAX as usize, payload.len()))?;
+        let payload_len = u32::try_from(payload.len()).map_err(|_| {
+            ProtocolError::limit("frame.payload_len", u32::MAX as usize, payload.len())
+        })?;
         Ok(Self {
             version: PROTOCOL_VERSION,
             kind,
@@ -408,20 +408,28 @@ mod tests {
 
     #[test]
     fn a_foreign_stream_is_rejected_on_the_magic() {
-        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"").unwrap().encode();
+        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"")
+            .unwrap()
+            .encode();
         bytes[0] = b'X';
         assert_eq!(
-            FrameHeader::parse(&bytes, &ProtocolLimits::new()).unwrap_err().kind(),
+            FrameHeader::parse(&bytes, &ProtocolLimits::new())
+                .unwrap_err()
+                .kind(),
             ProtocolErrorKind::BadMagic
         );
     }
 
     #[test]
     fn a_newer_framing_revision_is_rejected_but_an_older_one_is_not() {
-        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"").unwrap().encode();
+        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"")
+            .unwrap()
+            .encode();
         bytes[4..6].copy_from_slice(&(PROTOCOL_VERSION + 1).to_le_bytes());
         assert_eq!(
-            FrameHeader::parse(&bytes, &ProtocolLimits::new()).unwrap_err().kind(),
+            FrameHeader::parse(&bytes, &ProtocolLimits::new())
+                .unwrap_err()
+                .kind(),
             ProtocolErrorKind::UnsupportedVersion {
                 found: PROTOCOL_VERSION + 1,
                 supported: PROTOCOL_VERSION,
@@ -429,24 +437,32 @@ mod tests {
         );
         bytes[4..6].copy_from_slice(&0u16.to_le_bytes());
         assert_eq!(
-            FrameHeader::parse(&bytes, &ProtocolLimits::new()).unwrap().version,
+            FrameHeader::parse(&bytes, &ProtocolLimits::new())
+                .unwrap()
+                .version,
             0
         );
     }
 
     #[test]
     fn a_non_zero_reserved_word_is_rejected() {
-        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"").unwrap().encode();
+        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"")
+            .unwrap()
+            .encode();
         bytes[10..12].copy_from_slice(&1u16.to_le_bytes());
         assert_eq!(
-            FrameHeader::parse(&bytes, &ProtocolLimits::new()).unwrap_err().kind(),
+            FrameHeader::parse(&bytes, &ProtocolLimits::new())
+                .unwrap_err()
+                .kind(),
             ProtocolErrorKind::InvalidValue
         );
     }
 
     #[test]
     fn an_absurd_length_prefix_is_capped_before_anyone_allocates() {
-        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"").unwrap().encode();
+        let mut bytes = FrameHeader::for_payload(1, FrameFlags::NONE, b"")
+            .unwrap()
+            .encode();
         bytes[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
         let limits = ProtocolLimits::new();
         let err = FrameHeader::parse(&bytes, &limits).unwrap_err();
@@ -498,7 +514,9 @@ mod tests {
         }
         .encode();
         assert_eq!(
-            FrameHeader::parse(&bytes, &ProtocolLimits::new()).unwrap().flags,
+            FrameHeader::parse(&bytes, &ProtocolLimits::new())
+                .unwrap()
+                .flags,
             f
         );
     }

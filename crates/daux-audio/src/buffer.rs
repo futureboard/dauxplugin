@@ -202,10 +202,14 @@ impl<'a, T: Sample> AudioBufferRef<'a, T> {
     ///   a single allocation. If `frames == 0` the channel pointers are never read and may
     ///   be null.
     /// * `frames * size_of::<T>()` does not exceed `isize::MAX`.
-    /// * No `&mut` reference to those samples exists and nothing writes to them while this
-    ///   view, or anything derived from it, is alive. Channels *may* alias one another and
-    ///   *may* be the same memory the host also passes as an output for in-place
-    ///   processing, because this view only ever produces shared references.
+    /// * No `&mut` reference to those samples is **live** at any moment when a `&[T]`
+    ///   obtained from this view is also live. Channels *may* alias one another, and *may*
+    ///   be the same memory the host passes as an output for in-place processing — `abi-v1`
+    ///   §8 explicitly permits that, so a contract forbidding it would make every conforming
+    ///   adapter unsound. What is forbidden is holding a slice from here across a write to
+    ///   the same samples, not the existence of an aliasing [`AudioBufferMut`]: this type
+    ///   stores raw pointers and materialises a reference only inside the call that asks for
+    ///   one.
     /// * `channels` and `frames` are the real extents; they are trusted without checking.
     #[inline]
     #[must_use]
@@ -608,10 +612,16 @@ impl<'a, T: Sample> AudioBufferMut<'a, T> {
     ///   [`split_channels_mut`] hands out one `&mut [T]` per channel simultaneously, so two
     ///   channel pointers into the same memory would produce aliasing `&mut`s, which is
     ///   undefined behaviour. This is the one aliasing rule a host must respect.
-    /// * No other reference — shared or exclusive — to those samples exists while this view
-    ///   or anything derived from it is alive. The buffer *may* be the same memory the host
-    ///   also passed as an input for in-place processing, provided the corresponding
-    ///   [`AudioBufferRef`] is not alive at the same time.
+    /// * No other reference to those samples is **live** at any moment when a `&mut [T]`
+    ///   obtained from this view is also live. The buffer *may* be the same memory the host
+    ///   passed as an input for in-place processing, and an [`AudioBufferRef`] over it *may*
+    ///   exist at the same time: `abi-v1` §8 permits input and output to alias, and
+    ///   [`AudioBuses`](crate::AudioBuses) holds both views simultaneously by construction,
+    ///   so any stricter rule would make every conforming adapter unsound. Both types store
+    ///   raw pointers and materialise a Rust reference only for the duration of the call
+    ///   that asks for one — so the rule a plug-in must actually follow is: do not hold an
+    ///   input slice across a write to the output that aliases it. Read it, or copy it out,
+    ///   first.
     /// * `frames * size_of::<T>()` does not exceed `isize::MAX`, and `channels`/`frames`
     ///   are the real extents; they are trusted without checking.
     ///
@@ -2328,5 +2338,54 @@ mod tests {
         assert_eq!(full_mask(63), (1u64 << 63) - 1);
         assert_eq!(full_mask(64), u64::MAX);
         assert_eq!(full_mask(usize::MAX), u64::MAX);
+    }
+
+    /// `abi-v1` §8: "Buffers MAY alias between input and output (in-place processing)."
+    ///
+    /// A host is allowed to hand the same memory in as the input and out as the output, so a
+    /// read view and a write view over one buffer must be able to exist at the same time and
+    /// still produce the right samples. This is the shape every real DAW uses on an insert
+    /// effect, and it is the shape the two `from_raw` safety contracts are written for — so
+    /// it is worth an actual test rather than only prose.
+    ///
+    /// Run this under Miri to get the aliasing check that makes it worth having.
+    #[test]
+    fn a_read_view_and_a_write_view_over_the_same_memory_process_in_place() {
+        const FRAMES: usize = 8;
+        let mut left = [1.0f32; FRAMES];
+        let mut right = [2.0f32; FRAMES];
+
+        // One set of channel pointers, handed out as both input and output — exactly what a
+        // host doing in-place processing passes to `process`.
+        let write_ptrs: [*mut f32; 2] = [left.as_mut_ptr(), right.as_mut_ptr()];
+        let read_ptrs: [*const f32; 2] = [write_ptrs[0].cast_const(), write_ptrs[1].cast_const()];
+
+        // SAFETY: both arrays hold two non-null, aligned pointers to `FRAMES` initialised,
+        // writable `f32`s in distinct allocations (`left` and `right` do not overlap each
+        // other, which is the one aliasing rule `AudioBufferMut::from_raw` makes absolute).
+        // `left` and `right` are borrowed mutably for the rest of this scope and are neither
+        // moved nor dropped while the views exist. The two views deliberately address the
+        // same samples; no Rust reference to them is materialised except inside the calls
+        // below, and never two at once.
+        let (input, mut output) = unsafe {
+            (
+                AudioBufferRef::<f32>::from_raw(read_ptrs.as_ptr(), 2, FRAMES),
+                AudioBufferMut::<f32>::from_raw(write_ptrs.as_ptr(), 2, FRAMES),
+            )
+        };
+
+        // `copy_from` on an aliasing pair is a `memmove` over identical regions: a no-op that
+        // must not be undefined behaviour.
+        output.copy_from(&input).expect("shapes match");
+
+        // Then the write half alone, which is how an effect applies its gain.
+        for channel in output.split_channels_mut() {
+            for sample in channel {
+                *sample *= 0.5;
+            }
+        }
+
+        assert_eq!(left, [0.5f32; FRAMES]);
+        assert_eq!(right, [1.0f32; FRAMES]);
     }
 }
