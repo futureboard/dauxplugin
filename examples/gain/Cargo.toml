@@ -15,3 +15,27 @@ daux-plugin = { workspace = true, features = ["axt", "vst3", "clap"] }
 
 [lints]
 workspace = true
+
+# The single source of truth `daux build` reads (manifest-v1 §2). Every value here must match
+# the `#[plugin(..)]` attribute in `src/lib.rs`, because `daux validate --probe` cross-checks
+# the manifest against the descriptor the binary actually exports (manifest-v1 §8.1) and
+# reports `DAUX-M100`..`DAUX-M107` when the two disagree.
+#
+# `version` is repeated rather than inherited: `[package] version` is `version.workspace =
+# true`, a TOML table, and this reader deliberately does not resolve workspace inheritance.
+[package.metadata.daux]
+id = "studio.futureboard.daux.example.gain"
+name = "DAUx Gain"
+vendor = "Futureboard Studio"
+version = "1.0.0"
+category = "effect"
+description = "Minimal stereo gain effect."
+license = "MIT OR Apache-2.0"
+features = ["utility", "gain"]
+formats = ["axt"]
+
+[package.metadata.daux.capabilities]
+audioEffect = true
+sampleAccurateAutomation = true
+offlineRender = true
+sandboxSafe = true
